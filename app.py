@@ -133,6 +133,7 @@ class PlantaAzucareraCompleta:
 
         alc_2da_caida = max(0.0, float(c['OP_1raCarb_AlcalinidadSalida']) - float(c['OP_2daCarb_AlcalinidadSalida']))
         cao_reacc_2da = (flujo_jugo_entrada * alc_2da_caida) / 1000.0
+        caco3_2da = cao_reacc_2da * (100.0 / 56.0)
         co2_2 = cao_reacc_2da * (44.0/56.0)
 
         azucar_corefin = float(c['OP_AzucarCorefin_th']) * f_escala
@@ -248,9 +249,11 @@ class PlantaAzucareraCompleta:
         P_sugC = 96.7; P_mol = 57.2
 
         flujo_liq = float(m7.get('OUT_StandardLiquor_Flujo_th', 172.19 * f_escala))
-        brix_liq = float(m7.get('OUT_StandardLiquor_Brix_pct', 66.5))
 
-        # Tacha A
+        # CORRECCIÓN VITAL: BRIX 73.90% DE ACOR
+        brix_liq = float(m7.get('OUT_StandardLiquor_Brix_pct', 73.90))
+
+        # TACHA A (VAPOR 4)
         S_in_A = flujo_liq * (brix_liq / 100.0)
         S_A = S_in_A * max(0.0, (P_liq - P_greenA) / (P_sugA - P_greenA)) if P_sugA != P_greenA else 0.0
         Masa_A = S_in_A / (brix_a / 100.0) if brix_a > 0 else 0.0
@@ -258,14 +261,19 @@ class PlantaAzucareraCompleta:
         Agua_masa_A = Masa_A * (1.0 - brix_a/100.0)
         vapor_tacha_a = max(0.0, Agua_feed_A - Agua_masa_A)
 
+        # Reparto de Cristal A (Comercial vs Polvo)
+        total_azucar_a_th = S_A / (P_sugA / 100.0)
+        polvo_secadero_th = total_azucar_a_th * (4.61 / 77.11) # Ratio histórico ACOR
+        azucar_comercial_th = total_azucar_a_th - polvo_secadero_th
+
         S_green_A = S_in_A - S_A
         a_green_runoff = S_green_A / 0.787
 
-        # Tacha B
         b_seed_flujo = 18.03 * f_escala
         flujo_mpa_seed = 10.5 * f_escala
         miel_pobre_a_restante = max(0.0, a_green_runoff - flujo_mpa_seed)
 
+        # TACHA B (VAPOR 3)
         Flujo_in_B = b_seed_flujo + miel_pobre_a_restante
         S_in_B = S_green_A
         S_B = S_in_B * max(0.0, (P_greenA - P_greenB) / (P_sugB - P_greenB)) if P_sugB != P_greenB else 0.0
@@ -277,7 +285,7 @@ class PlantaAzucareraCompleta:
         S_green_B = S_in_B - S_B
         b_green_runoff = S_green_B / 0.770
 
-        # Tacha C
+        # TACHA C (VAPOR 4)
         b_white_runoff_total = 7.44 * f_escala
         flujo_mrb_seed = 6.0 * f_escala
         miel_rica_b_remanente = max(0.0, b_white_runoff_total - flujo_mrb_seed)
@@ -292,12 +300,11 @@ class PlantaAzucareraCompleta:
         vapor_tacha_c = max(0.0, Agua_feed_C - Agua_masa_C)
 
         out.update({
-            'OUT_AzucarComercial_Silo_th': S_A / (P_sugA/100.0),
-            'OUT_PolvoSecadero_Recuperado_th': (S_A / 0.998) * 0.06,
+            'OUT_AzucarComercial_Silo_th': azucar_comercial_th,
+            'OUT_PolvoSecadero_Recuperado_th': polvo_secadero_th,
             'OUT_AzucarB_Fundicion_th': S_B / (P_sugB/100.0),
             'OUT_AzucarB_Polarizacion_pct': P_sugB,
 
-            # ASIGNACIÓN CORREGIDA 100% (A=V4, B=V3, C=V4)
             'OUT_Vapor4_Demanda_CristalizacionA_th': vapor_tacha_a,
             'OUT_Vapor3_Demanda_CristalizacionB_th': vapor_tacha_b,
             'OUT_Vapor4_Demanda_CristalizacionC_th': vapor_tacha_c,
@@ -344,7 +351,8 @@ class PlantaAzucareraCompleta:
         out['OUT_Calentador15_VaporConsumo_th'] = vapor_requerido_th
         out['OUT_Mod7_Resumen_Vapores_th'] = {fuente_vapor: vapor_requerido_th}
 
-        brix_liquor_estandar = 66.50
+        # CORRECCIÓN VITAL: BRIX 73.90% DE ACOR
+        brix_liquor_estandar = 73.90
         flujo_liquor_estandar_th = masa_seca_total_th / (brix_liquor_estandar / 100.0) if brix_liquor_estandar > 0 else 0.0
 
         out['OUT_StandardLiquor_Flujo_th'] = flujo_liquor_estandar_th
@@ -380,16 +388,14 @@ class PlantaAzucareraCompleta:
 
         dem_m7 = m7.get('OUT_Mod7_Resumen_Vapores_th', {})
         D = [0.0]*6
-
-        # EL MAPA DE VAPORES PERFECTO (Tacha A está en D[3] que es Vapour 4)
         D[0] = float(m4.get('OUT_Calentador13_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_1erEfecto', 0.0)) + SANGRIA
-        D[1] = float(m4.get('OUT_Calentador11_Vapor_th', 0.0)) + float(m4.get('OUT_Calentador12_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_2doEfecto', 0.0)) + float(m6.get('OUT_SecaderoAzucar_Vapor_th', 0.0)) + 3.00 + SANGRIA
-        D[2] = float(m4.get('OUT_Calentador10_Vapor_th', 0.0)) + float(m3.get('OUT_Calentador9_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 0.0)) + float(dem_m7.get('Vapor_3erEfecto', 0.0)) + SANGRIA
-        D[3] = float(m3.get('OUT_Calentador7_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 0.0)) + float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 0.0)) + float(dem_m7.get('Vapor_4toEfecto', 0.0)) + SANGRIA
+        D[1] = float(m4.get('OUT_Calentador11_Vapor_th', 0.0)) + float(m4.get('OUT_Calentador12_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_2doEfecto', 0.0)) + SANGRIA
+        D[2] = float(m4.get('OUT_Calentador10_Vapor_th', 0.0)) + float(m3.get('OUT_Calentador9_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor3_Demanda_Total_th', 0.0)) + float(dem_m7.get('Vapor_3erEfecto', 0.0)) + SANGRIA
+        # Tacha A y C alimentadas desde Vapor 4
+        D[3] = float(m3.get('OUT_Calentador7_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor4_Demanda_Total_th', 0.0)) + float(dem_m7.get('Vapor_4toEfecto', 0.0)) + SANGRIA
         D[4] = float(m3.get('OUT_Calentador5_6_Vapor_th', 0.0)) + float(m3.get('OUT_Calentador8_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador17_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador18_19_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador20_Vapor_th', 0.0)) + (0.29 * (float(c['IN_Molienda_th'])/445.0)) + SANGRIA
-        D[5] = float(m2.get('OUT_Calentador3_Vapor_th', 0.0)) + SANGRIA
+        D[5] = float(m2.get('OUT_Calentador00_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador0_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador1_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador2_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador3_Vapor_th', 0.0)) + SANGRIA
 
-        # SOLVER DE BISECCIÓN ACOTADO
         def simular_cascada(E0):
             E = [0.0]*6
             V_tot = [0.0]*6
@@ -413,7 +419,7 @@ class PlantaAzucareraCompleta:
                 Flash_c[i] = (Cond[i-1] * cp_agua * max(0.0, temp_vap[i-1] - temp_vap[i])) / L[i]
 
                 V_tot[i] = E[i] + Flash_c[i] + Flash_j[i]
-                F_j[i] = max(0.1, F_j[i-1] - E[i] - Flash_j[i])
+                F_j[i] = max(0.1, F_j[i-1] - E[i])
 
                 extr = 5.08 * (W / 369.46) if i == 1 else 0.0
                 Cond[i] = max(0.0, Cond[i-1] - extr) + V_in - Flash_c[i]
