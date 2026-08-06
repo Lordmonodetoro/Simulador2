@@ -13,7 +13,7 @@ import numpy as np
 
 # Configuración general de la página en modo ancho
 st.set_page_config(
-    page_title="Simulador Maestro de Planta Azucarera (M1 - M8)",
+    page_title="Simulador proceso Azucarera ACOR",
     page_icon="🏭",
     layout="wide"
 )
@@ -43,22 +43,22 @@ class PlantaAzucareraCompleta:
     def __init__(self, config=None):
         self.config = {
             # --- MATERIA PRIMA ---
-            'IN_Molienda_th': 550.00,
-            'IN_Riqueza_Remolacha_pct': 17.40,
-            'IN_Pureza_Agricola_pct': 90.40,
-            'IN_Marc_Fibra_pct': 4.50,
+            'Molienda t/h': 550.00,
+            'Riqueza_Remolacha': 17.40,
+            'Pureza_Agricola': 90.40,
+            'Marco_Remolacha': 4.50,
 
             # --- MÓDULO 1: DIFUSIÓN Y PRENSAS ---
-            'OP_DifPren_Ratio_Extraccion': 1.11,
-            'OP_DifPren_MS_PulpaPrensada_pct': 27.50,
-            'OP_DifPren_Temp_JugoCrudo_C': 26.00,
-            'OP_DifPren_Ratio_AguaAporte_pct': 24.93,
+            'Draft': 1.11,
+            'MS_PulpaPrensada': 27.50,
+            'Tª_Jugo_Verde': 26.00,
+            '% Ratio_Agua_Aporte': 24.93,
             'OP_DifPren_Mezcla_AguaCaliente_pct': 80.00,
             'OP_DifPren_Ratio_AguaPrensas_pct': 37.04,
             'OP_DifPren_Ratio_Recirculacion_pct': 165.00,
             'OP_DifPren_Ratio_Desespumador_pct': 46.00,
-            'OP_DifPren_Int17_TempIn_C': 62.00,
-            'OP_DifPren_Int17_TempOut_C': 72.00,
+            'Intercambiador 17_Tª Entrada_C': 62.00,
+            'OP_DifPren_Int17_Tª Salida_C': 72.00,
             'OP_DifPren_Int18_19_TempIn_C': 71.40,
             'OP_DifPren_Int18_19_TempOut_C': 73.30,
             'OP_DifPren_Int20_TempIn_C': 71.40,
@@ -67,19 +67,19 @@ class PlantaAzucareraCompleta:
             'OP_DifPren_Int18_19_FuenteVapor': 'Vapor_V5_A609',
             'OP_DifPren_Int20_FuenteVapor': 'Vapor_V5_A609',
 
-            # --- MÓDULO 2: CALENTAMIENTO JUGO CRUDO ---
-            'OP_CalCrudo_Int00_TempOut_C': 47.40,
-            'OP_CalCrudo_Int0_TempOut_C': 48.80,
-            'OP_CalCrudo_Int1_TempOut_C': 49.10,
-            'OP_CalCrudo_Int2_TempOut_C': 49.10,
-            'OP_CalCrudo_Int3_TempOut_C': 53.80,
-            'OP_CalCrudo_Int3a_TempOut_C': 59.00,
-            'OP_CalCrudo_Int00_FuenteVapor': 'Vapor_Tachas_57C',
-            'OP_CalCrudo_Int0_FuenteVapor': 'Vapor_Tachas_57C',
-            'OP_CalCrudo_Int1_FuenteVapor': 'Vapor_Tachas_57C',
-            'OP_CalCrudo_Int2_FuenteVapor': 'Vapor_Tachas_57C',
-            'OP_CalCrudo_Int3_FuenteVapor': 'Vapor_V6_94C',
-            'OP_CalCrudo_Int3a_FuenteVapor': 'Condensado_A609_Sensible',
+            # --- MÓDULO 2: CALENTAMIENTO JUGO _Verde ---
+            'OP_Cal_Verde_Int00_TempOut_C': 47.40,
+            'OP_Cal_Verde_Int0_TempOut_C': 48.80,
+            'OP_Cal_Verde_Int1_TempOut_C': 49.10,
+            'OP_Cal_Verde_Int2_TempOut_C': 49.10,
+            'OP_Cal_Verde_Int3_TempOut_C': 53.80,
+            'OP_Cal_Verde_Int3a_TempOut_C': 59.00,
+            'OP_Cal_Verde_Int00_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int0_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int1_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int2_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int3_FuenteVapor': 'Vapor_V6_94C',
+            'OP_Cal_Verde_Int3a_FuenteVapor': 'Condensado_A609_Sensible',
 
             # --- MÓDULO 3: DEPURACIÓN Y CARBONATACIONES ---
             'OP_Depuracion_CaO_pct_remolacha': 1.28,
@@ -141,9 +141,9 @@ class PlantaAzucareraCompleta:
 
         # MÓDULO 1: DIFUSIÓN Y PRENSAS
         molienda = cfg['IN_Molienda_th']
-        flujo_jugo_crudo = molienda * cfg['OP_DifPren_Ratio_Extraccion']
+        flujo_jugo__Verde = molienda * cfg['OP_DifPren_Ratio_Extraccion']
         solidos_sacarosa = molienda * (cfg['IN_Riqueza_Remolacha_pct'] / cfg['IN_Pureza_Agricola_pct']) * 0.98
-        ds_jugo_crudo = (solidos_sacarosa / flujo_jugo_crudo) * 100.0
+        ds_jugo__Verde = (solidos_sacarosa / flujo_jugo__Verde) * 100.0
         pulpa_prensada_secado = (molienda * (cfg['IN_Marc_Fibra_pct']/100.0)) / (cfg['OP_DifPren_MS_PulpaPrensada_pct']/100.0)
 
         flujo_agua_total = molienda * (cfg['OP_DifPren_Ratio_AguaAporte_pct'] / 100.0)
@@ -167,10 +167,10 @@ class PlantaAzucareraCompleta:
         demanda_v20 = (f_desesp * 4.10 * dt_20) / cat_vap[fuente_20]['entalpia']
 
         res['M1'] = {
-            'OUT_DifPren_JugoCrudo_Flujo_th': round(flujo_jugo_crudo, 2),
-            'OUT_DifPren_JugoCrudo_DS_pct': round(ds_jugo_crudo, 2),
-            'OUT_DifPren_JugoCrudo_Pureza_pct': round(cfg['IN_Pureza_Agricola_pct'], 2),
-            'OUT_DifPren_JugoCrudo_Temp_C': round(cfg['OP_DifPren_Temp_JugoCrudo_C'], 2),
+            'OUT_DifPren_Jugo_Verde_Flujo_th': round(flujo_jugo__Verde, 2),
+            'OUT_DifPren_Jugo_Verde_DS_pct': round(ds_jugo__Verde, 2),
+            'OUT_DifPren_Jugo_Verde_Pureza_pct': round(cfg['IN_Pureza_Agricola_pct'], 2),
+            'OUT_DifPren_Jugo_Verde_Temp_C': round(cfg['OP_DifPren_Temp_Jugo_Verde_C'], 2),
             'OUT_DifPren_PulpaPrensada_Secado_th': round(pulpa_prensada_secado, 2),
             'OUT_DifPren_AguaAporte_Total_th': round(flujo_agua_total, 2),
             'OUT_DifPren_AguaAporte_Cal_th': round(agua_aporte_cal, 2),
@@ -186,29 +186,29 @@ class PlantaAzucareraCompleta:
             'OUT_DifPren_Int20_Condensado_th': round(demanda_v20, 2)
         }
 
-        # MÓDULO 2: CALENTAMIENTO JUGO CRUDO
-        cp_jugo = 4.18 - (0.023 * ds_jugo_crudo)
-        t_in = cfg['OP_DifPren_Temp_JugoCrudo_C']
+        # MÓDULO 2: CALENTAMIENTO JUGO _Verde
+        cp_jugo = 4.18 - (0.023 * ds_jugo__Verde)
+        t_in = cfg['OP_DifPren_Temp_Jugo_Verde_C']
         m2_out = {}
 
         for eq in ['00', '0', '1', '2', '3']:
-            t_out = cfg[f'OP_CalCrudo_Int{eq}_TempOut_C']
+            t_out = cfg[f'OP_Cal_Verde_Int{eq}_TempOut_C']
             dt = t_out - t_in
-            fuente = cfg[f'OP_CalCrudo_Int{eq}_FuenteVapor']
-            dem_v = (flujo_jugo_crudo * cp_jugo * dt) / cat_vap[fuente]['entalpia']
-            m2_out[f'OUT_CalCrudo_Int{eq}_DemandaVapor_th'] = round(dem_v, 2)
-            m2_out[f'OUT_CalCrudo_Int{eq}_Condensado_th'] = round(dem_v, 2)
+            fuente = cfg[f'OP_Cal_Verde_Int{eq}_FuenteVapor']
+            dem_v = (flujo_jugo__Verde * cp_jugo * dt) / cat_vap[fuente]['entalpia']
+            m2_out[f'OUT_Cal_Verde_Int{eq}_DemandaVapor_th'] = round(dem_v, 2)
+            m2_out[f'OUT_Cal_Verde_Int{eq}_Condensado_th'] = round(dem_v, 2)
             t_in = t_out
 
-        t_out_3a = cfg['OP_CalCrudo_Int3a_TempOut_C']
+        t_out_3a = cfg['OP_Cal_Verde_Int3a_TempOut_C']
         dt_3a = t_out_3a - t_in
-        fuente_3a = cfg['OP_CalCrudo_Int3a_FuenteVapor']
-        demanda_liq = (flujo_jugo_crudo * cp_jugo * dt_3a) / cat_vap[fuente_3a]['entalpia']
-        m2_out['OUT_CalCrudo_Int3a_DemandaLíquido_th'] = round(demanda_liq, 2)
-        m2_out['OUT_CalCrudo_Int3a_RetornoFrio_th'] = round(demanda_liq, 2)
-        m2_out['OUT_CalCrudo_TempFinal_C'] = round(t_out_3a, 2)
-        m2_out['OUT_CalCrudo_FlujoSalida_th'] = round(flujo_jugo_crudo, 2)
-        m2_out['OUT_CalCrudo_DS_Salida_pct'] = round(ds_jugo_crudo, 2)
+        fuente_3a = cfg['OP_Cal_Verde_Int3a_FuenteVapor']
+        demanda_liq = (flujo_jugo__Verde * cp_jugo * dt_3a) / cat_vap[fuente_3a]['entalpia']
+        m2_out['OUT_Cal_Verde_Int3a_DemandaLíquido_th'] = round(demanda_liq, 2)
+        m2_out['OUT_Cal_Verde_Int3a_RetornoFrio_th'] = round(demanda_liq, 2)
+        m2_out['OUT_Cal_Verde_TempFinal_C'] = round(t_out_3a, 2)
+        m2_out['OUT_Cal_Verde_FlujoSalida_th'] = round(flujo_jugo__Verde, 2)
+        m2_out['OUT_Cal_Verde_DS_Salida_pct'] = round(ds_jugo__Verde, 2)
         res['M2'] = m2_out
 
         # MÓDULO 3: DEPURACIÓN Y CARBONATACIONES
@@ -222,8 +222,8 @@ class PlantaAzucareraCompleta:
         lechada_pre = lechada_total * (9.47 / (9.47 + 30.00))
         lechada_frio = lechada_total * (30.00 / (9.47 + 30.00))
 
-        flujo_pre = flujo_jugo_crudo + lodos_2do + lechada_pre
-        ms_pre = (flujo_jugo_crudo * (ds_jugo_crudo / 100.0)) + (cao_activo * 0.5)
+        flujo_pre = flujo_jugo__Verde + lodos_2do + lechada_pre
+        ms_pre = (flujo_jugo__Verde * (ds_jugo__Verde / 100.0)) + (cao_activo * 0.5)
         brix_pre = (ms_pre / flujo_pre) * 100.0
 
         azucar_corefin = cfg['OP_AzucarCorefin_th']
@@ -286,9 +286,9 @@ class PlantaAzucareraCompleta:
 
         res['M3'] = {
             'OUT_Depuracion_CaO_Activo_th': round(cao_activo, 2),
-            'OUT_Depuracion_JugoEntrada_th': round(flujo_jugo_crudo, 2),
+            'OUT_Depuracion_JugoEntrada_th': round(flujo_jugo__Verde, 2),
             'OUT_Depuracion_TempEntrada_C': round(t_out_3a, 2),
-            'OUT_Depuracion_BrixEntrada_pct': round(ds_jugo_crudo, 2),
+            'OUT_Depuracion_BrixEntrada_pct': round(ds_jugo__Verde, 2),
             'OUT_Depuracion_PurezaEntrada_pct': round(pureza_base, 2),
             'OUT_Preencalado_RecircLodos2do_th': round(lodos_2do, 2),
             'OUT_Preencalado_Lechada_Calculada_th': round(lechada_pre, 2),
@@ -550,7 +550,7 @@ with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=
     in_marc = st.slider("IN_Marc_Fibra_pct (%)", 3.0, 7.0, 4.5, 0.1)
     op_ratio_ext = st.slider("OP_DifPren_Ratio_Extraccion", 1.0, 1.3, 1.11, 0.01)
     op_ms_pulpa = st.slider("OP_DifPren_MS_PulpaPrensada_pct (%)", 20.0, 35.0, 27.5, 0.5)
-    op_temp_crudo = st.slider("OP_DifPren_Temp_JugoCrudo_C (°C)", 15.0, 40.0, 26.0, 0.5)
+    op_temp__Verde = st.slider("OP_DifPren_Temp_Jugo_Verde_C (°C)", 15.0, 40.0, 26.0, 0.5)
     op_ratio_aporte = st.slider("OP_DifPren_Ratio_AguaAporte_pct (%)", 15.0, 35.0, 24.93, 0.1)
     op_mezcla_caliente = st.slider("OP_DifPren_Mezcla_AguaCaliente_pct (%)", 50.0, 100.0, 80.0, 1.0)
     op_ratio_prensas = st.slider("OP_DifPren_Ratio_AguaPrensas_pct (%)", 20.0, 50.0, 37.04, 0.1)
@@ -563,13 +563,13 @@ with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=
     op_int20_tin = st.number_input("OP_DifPren_Int20_TempIn_C (°C)", value=71.4)
     op_int20_tout = st.number_input("OP_DifPren_Int20_TempOut_C (°C)", value=76.5)
 
-with st.sidebar.expander("🔥 Módulo 2 (Calentamiento Jugo Crudo)", expanded=False):
-    op_int00_tout = st.number_input("OP_CalCrudo_Int00_TempOut_C (°C)", value=47.4)
-    op_int0_tout = st.number_input("OP_CalCrudo_Int0_TempOut_C (°C)", value=48.8)
-    op_int1_tout = st.number_input("OP_CalCrudo_Int1_TempOut_C (°C)", value=49.1)
-    op_int2_tout = st.number_input("OP_CalCrudo_Int2_TempOut_C (°C)", value=49.1)
-    op_int3_tout = st.number_input("OP_CalCrudo_Int3_TempOut_C (°C)", value=53.8)
-    op_int3a_tout = st.number_input("OP_CalCrudo_Int3a_TempOut_C (°C)", value=59.0)
+with st.sidebar.expander("🔥 Módulo 2 (Calentamiento Jugo _Verde)", expanded=False):
+    op_int00_tout = st.number_input("OP_Cal_Verde_Int00_TempOut_C (°C)", value=47.4)
+    op_int0_tout = st.number_input("OP_Cal_Verde_Int0_TempOut_C (°C)", value=48.8)
+    op_int1_tout = st.number_input("OP_Cal_Verde_Int1_TempOut_C (°C)", value=49.1)
+    op_int2_tout = st.number_input("OP_Cal_Verde_Int2_TempOut_C (°C)", value=49.1)
+    op_int3_tout = st.number_input("OP_Cal_Verde_Int3_TempOut_C (°C)", value=53.8)
+    op_int3a_tout = st.number_input("OP_Cal_Verde_Int3a_TempOut_C (°C)", value=59.0)
 
 with st.sidebar.expander("🧪 Módulo 3 (Depuración y Carbonataciones)", expanded=False):
     op_cao_pct = st.slider("OP_Depuracion_CaO_pct_remolacha (%)", 0.8, 2.0, 1.28, 0.01)
@@ -615,7 +615,7 @@ config_usuario = {
     'IN_Marc_Fibra_pct': in_marc,
     'OP_DifPren_Ratio_Extraccion': op_ratio_ext,
     'OP_DifPren_MS_PulpaPrensada_pct': op_ms_pulpa,
-    'OP_DifPren_Temp_JugoCrudo_C': op_temp_crudo,
+    'OP_DifPren_Temp_Jugo_Verde_C': op_temp__Verde,
     'OP_DifPren_Ratio_AguaAporte_pct': op_ratio_aporte,
     'OP_DifPren_Mezcla_AguaCaliente_pct': op_mezcla_caliente,
     'OP_DifPren_Ratio_AguaPrensas_pct': op_ratio_prensas,
@@ -627,12 +627,12 @@ config_usuario = {
     'OP_DifPren_Int18_19_TempOut_C': op_int18_tout,
     'OP_DifPren_Int20_TempIn_C': op_int20_tin,
     'OP_DifPren_Int20_TempOut_C': op_int20_tout,
-    'OP_CalCrudo_Int00_TempOut_C': op_int00_tout,
-    'OP_CalCrudo_Int0_TempOut_C': op_int0_tout,
-    'OP_CalCrudo_Int1_TempOut_C': op_int1_tout,
-    'OP_CalCrudo_Int2_TempOut_C': op_int2_tout,
-    'OP_CalCrudo_Int3_TempOut_C': op_int3_tout,
-    'OP_CalCrudo_Int3a_TempOut_C': op_int3a_tout,
+    'OP_Cal_Verde_Int00_TempOut_C': op_int00_tout,
+    'OP_Cal_Verde_Int0_TempOut_C': op_int0_tout,
+    'OP_Cal_Verde_Int1_TempOut_C': op_int1_tout,
+    'OP_Cal_Verde_Int2_TempOut_C': op_int2_tout,
+    'OP_Cal_Verde_Int3_TempOut_C': op_int3_tout,
+    'OP_Cal_Verde_Int3a_TempOut_C': op_int3a_tout,
     'OP_Depuracion_CaO_pct_remolacha': op_cao_pct,
     'OP_AzucarCorefin_th': op_corefin_th,
     'OP_1raCarb_AlcalinidadEntrada_gh': op_alc1_in,
@@ -672,7 +672,7 @@ resultados = planta.simular()
 # ====================================================================
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Módulo 1: Difusión",
-    "Módulo 2: Cal. Crudo",
+    "Módulo 2: Cal. _Verde",
     "Módulo 3: Depuración",
     "Módulo 4: Jugo Fino",
     "Módulo 5: Evaporación",
@@ -704,7 +704,7 @@ with tab1:
     render_modulo_tab('M1', 'Módulo 1: Difusiones y Prensas')
 
 with tab2:
-    render_modulo_tab('M2', 'Módulo 2: Calentamiento de Jugo Crudo')
+    render_modulo_tab('M2', 'Módulo 2: Calentamiento de Jugo _Verde')
 
 with tab3:
     render_modulo_tab('M3', 'Módulo 3: Depuración y Carbonataciones')
@@ -729,7 +729,7 @@ with tab9:
     reporte_global = ""
     titulos_mods = {
         'M1': 'Módulo 1: Difusiones y Prensas',
-        'M2': 'Módulo 2: Calentamiento de Jugo Crudo',
+        'M2': 'Módulo 2: Calentamiento de Jugo _Verde',
         'M3': 'Módulo 3: Depuración y Carbonataciones',
         'M4': 'Módulo 4: Thin Juice Heating',
         'M5': 'Módulo 5: Estación de Evaporación',
