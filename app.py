@@ -537,18 +537,18 @@ class PlantaAzucareraCompleta:
 # DISEÑO DE LA APLICACIÓN WEB EN STREAMLIT
 # ====================================================================
 
-st.title("🏭 Simulador Interactivo de Planta Azucarera (Módulos 1 al 8)")
+st.title("🏭 Simulador Fabrica Azucarera de ACOR 2026")
 st.markdown("Ajusta cualquiera de los **parámetros de entrada** en la barra lateral izquierda y observa en tiempo real los resultados del balance técnico completo por módulo o de forma global.")
 
 # BARRA LATERAL (INPUTS)
 st.sidebar.header("⚙️ PARÁMETROS DE ENTRADA (INPUTS)")
 
 with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=False):
-    in_molienda = st.slider("IN_Molienda_th (Molienda t/h)", 300.0, 800.0, 550.0, 5.0)
+    in_molienda = st.slider("Molienda t/h", 300.0, 800.0, 550.0, 5.0)
     in_riqueza = st.slider("IN_Riqueza_Remolacha_pct (%)", 12.0, 22.0, 17.4, 0.1)
     in_pureza = st.slider("IN_Pureza_Agricola_pct (%)", 85.0, 95.0, 90.4, 0.1)
     in_marc = st.slider("IN_Marc_Fibra_pct (%)", 3.0, 7.0, 4.5, 0.1)
-    op_ratio_ext = st.slider("OP_DifPren_Ratio_Extraccion", 1.0, 1.3, 1.11, 0.01)
+    op_ratio_ext = st.slider("Draft", 1.0, 1.3, 1.11, 0.01)
     op_ms_pulpa = st.slider("OP_DifPren_MS_PulpaPrensada_pct (%)", 20.0, 35.0, 27.5, 0.5)
     op_temp__Verde = st.slider("OP_DifPren_Temp_Jugo_Verde_C (°C)", 15.0, 40.0, 26.0, 0.5)
     op_ratio_aporte = st.slider("OP_DifPren_Ratio_AguaAporte_pct (%)", 15.0, 35.0, 24.93, 0.1)
