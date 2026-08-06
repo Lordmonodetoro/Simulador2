@@ -39,6 +39,16 @@ CATALOGO_VAPORES = {
     'Condensados_Deposito9635': {'entalpia': 393.0, 'tanque_destino': 'Retorno_Estacion_Condensados'}
 }
 
+DESTINOS_CONDENSADOS_DEPU = {
+    'Vapor_Escape': 'Condensado_Retorno_Calderas',
+    'Vapor_1erEfecto': 'Condensado_A_Tanque_Agua_Alimentacion',
+    'Vapor_3erEfecto': 'Condensado_A_Estacion_Purga_General',
+    'Vapor_4toEfecto': 'Condensado_A_Estacion_Purga_General',
+    'Vapor_5toEfecto': 'Condensado_A_Depuracion_Excedentes',
+    'Vapor_6toEfecto': 'Condensado_A_Tratamiento_Residual',
+    'Condensados_Deposito9635': 'Retorno_A_Estacion_Condensados_Generales'
+}
+
 LATENTE_VAPOR_KWHT = 616.36
 CONFIG_SECADERO = {'OUT_PolvoSecadero_Recuperado_th': 1.20}
 
@@ -62,7 +72,8 @@ class PlantaAzucareraCompleta:
                 "Evaporación 2da Carb (t/h)": 0.80, "Pérdidas Indefinidas (t/h)": 0.70
             },
             "Módulo 5": {
-                "Evaporación Base Efectos 1 a 6 (t/h)": [107.72, 100.30, 96.62, 46.78, 4.42, 13.58],
+                # Convertido a string directo para evitar el error de PyArrow
+                "Evaporación Base Efectos 1 a 6 (t/h)": "[107.72, 100.30, 96.62, 46.78, 4.42, 13.58]",
                 "Ratio Vapor Calderas / Evap Efecto 1": "117.34 / 107.72 (Aprox. 1.089)"
             },
             "Módulo 6": {
@@ -577,10 +588,11 @@ class PlantaAzucareraCompleta:
         return out
 
     def simular(self):
-        # 1. Pasada Preliminar
+        # 1. Pasada Preliminar (Ruptura de referencias circulares)
         m1 = self.mod_1_difusiones()
         m2 = self.mod_2_calentamiento_crudo(m1)
         m8_init = {}
+
         m3_init = self.mod_3_depuracion(m1, m2, m8_init)
         m4_init = self.mod_4_calentamiento_jugo_fino(m3_init)
 
@@ -784,4 +796,6 @@ with tabs[10]:
     for modulo, datos in planta.valores_fijos.items():
         st.write(f"### {modulo}")
         df_fijos = pd.DataFrame(list(datos.items()), columns=["Descripción del Parámetro Fijo", "Valor Original Documentado"])
+        # Conversión crítica para que PyArrow en Streamlit no tenga problemas con iterables (listas)
+        df_fijos["Valor Original Documentado"] = df_fijos["Valor Original Documentado"].astype(str)
         st.table(df_fijos)
