@@ -164,7 +164,7 @@ class PlantaAzucareraCompleta:
         evap_agua_1ra = (flujo_etapa_2 * cp_jugo * c['OP_Enfriamiento_1raCarb_C']) / 540.0
         vap_5_1ra_th = 0.29 * f_escala
         t_out_1ra_carb = c['OP_Calent_7_TempSalida_C'] - c['OP_Enfriamiento_1raCarb_C']
-        flujo_1ra_carb = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
+        flujo_etapa_3 = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
 
         ms_jugo_ent = flujo_jugo_entrada * (brix_entrada / 100.0)
         impurezas_removidas = ms_jugo_ent * (1 - pureza_base/100.0) * 0.30
@@ -187,12 +187,15 @@ class PlantaAzucareraCompleta:
         flujo_jugo_fino_total = flujo_etapa_5 - lodos_2do
         perdidas_indef = molienda * 0.0016
         flujo_jugo_fino_melting = flujo_jugo_fino_total * (c['OP_JugoFino_DestinoMelting_pct'] / 100.0)
-        flujo_jugo_fino_mod4 = flujo_jugo_fino_total - flujo_jugo_fino_melting - perdidas_indef
+
+        # RESTA DIRECTA DE LOS LODOS 2º AL FLUJO DE JUGO FINO HACIA M4 (Solicitado)
+        flujo_jugo_fino_mod4 = flujo_jugo_fino_total - flujo_jugo_fino_melting - perdidas_indef - lodos_2do
 
         out.update({
             'OUT_Depuracion_CaO_Activo_th': t_CaO_total,
-            'OUT_1raCarb_Salida_th': flujo_1ra_carb,
+            'OUT_1raCarb_Salida_th': flujo_etapa_3,
             'OUT_2daCarb_Salida_th': flujo_etapa_5,
+            'OUT_2daFiltracion_LodosRecirc_th': lodos_2do,
             'OUT_JugoFino_Total_th': flujo_jugo_fino_total,
             'OUT_JugoFino_Brix_pct': (ms_jugo_ent + azucar_corefin) / flujo_jugo_fino_total * 100.0 if flujo_jugo_fino_total > 0 else 0,
             'OUT_JugoFino_Temp_C': t_out_2da_carb,
