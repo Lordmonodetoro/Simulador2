@@ -7,12 +7,19 @@ Original file is located at
     https://colab.research.google.com/drive/1CBttTZScSUXg_9yYdWHr8b54kyTBpFde
 """
 
-import gradio as gr
+import streamlit as st
 import pandas as pd
 import numpy as np
 
+# Configuración general de la página en modo ancho
+st.set_page_config(
+    page_title="Simulador Maestro de Planta Azucarera (M1 - M8)",
+    page_icon="🏭",
+    layout="wide"
+)
+
 # ====================================================================
-# 0. CATÁLOGO MAESTRO DE VAPORES (Energía + Enrutamiento Dinámico)
+# 0. CATÁLOGO MAESTRO DE VAPORES
 # ====================================================================
 CATALOGO_VAPORES = {
     'Vapor_Escape': {'entalpia': 2200.0, 'tanque_destino': 'Calderas'},
@@ -30,7 +37,7 @@ CATALOGO_VAPORES = {
 }
 
 # ====================================================================
-# MOTOR MATEMÁTICO INTEGRO (MÓDULOS 1 AL 8)
+# MOTOR MATEMÁTICO ÍNTEGRO (MÓDULOS 1 AL 8)
 # ====================================================================
 class PlantaAzucareraCompleta:
     def __init__(self, config=None):
@@ -432,7 +439,7 @@ class PlantaAzucareraCompleta:
             'OUT_SecaderoAzucar_Vapor_th': round(1.78 * (molienda / 550.0), 2)
         }
 
-        # MÓDULO 7: REFUNDICIÓN Y CIRCUITO DE CONDENSADOS
+        # MÓDULO 7: REFUNDICIÓN Y CONDENSADOS
         flujo_jarabe_evap = res['M5']['OUT_ThickJuice_Flujo_th']
         brix_jarabe_evap = res['M5']['OUT_ThickJuice_Brix_pct']
         pureza_jarabe_evap = res['M5']['OUT_ThickJuice_Pureza_pct']
@@ -527,214 +534,219 @@ class PlantaAzucareraCompleta:
         return res
 
 # ====================================================================
-# APLICACIÓN INTERACTIVA GRADIO (MÓDULOS 1 AL 8)
+# DISEÑO DE LA APLICACIÓN WEB EN STREAMLIT
 # ====================================================================
-def simular_gradio(*args):
-    # Nombres exactos de las variables mapeadas según los controles de entrada
-    keys_input = [
-        'IN_Molienda_th', 'IN_Riqueza_Remolacha_pct', 'IN_Pureza_Agricola_pct', 'IN_Marc_Fibra_pct',
-        'OP_DifPren_Ratio_Extraccion', 'OP_DifPren_MS_PulpaPrensada_pct', 'OP_DifPren_Temp_JugoCrudo_C',
-        'OP_DifPren_Ratio_AguaAporte_pct', 'OP_DifPren_Mezcla_AguaCaliente_pct', 'OP_DifPren_Ratio_AguaPrensas_pct',
-        'OP_DifPren_Ratio_Recirculacion_pct', 'OP_DifPren_Ratio_Desespumador_pct',
-        'OP_DifPren_Int17_TempIn_C', 'OP_DifPren_Int17_TempOut_C',
-        'OP_DifPren_Int18_19_TempIn_C', 'OP_DifPren_Int18_19_TempOut_C',
-        'OP_DifPren_Int20_TempIn_C', 'OP_DifPren_Int20_TempOut_C',
-        'OP_CalCrudo_Int00_TempOut_C', 'OP_CalCrudo_Int0_TempOut_C', 'OP_CalCrudo_Int1_TempOut_C',
-        'OP_CalCrudo_Int2_TempOut_C', 'OP_CalCrudo_Int3_TempOut_C', 'OP_CalCrudo_Int3a_TempOut_C',
-        'OP_Depuracion_CaO_pct_remolacha', 'OP_AzucarCorefin_th', 'OP_1raCarb_AlcalinidadEntrada_gh',
-        'OP_1raCarb_AlcalinidadSalida', 'OP_2daCarb_AlcalinidadSalida', 'OP_PKF_MS_Barros_pct',
-        'OP_Calent_3B_TempEntrada_C', 'OP_Calent_3B_TempSalida_C', 'OP_Calent_4_TempSalida_C',
-        'OP_Calent_56_TempSalida_C', 'OP_Calent_7_TempSalida_C', 'OP_Enfriamiento_1raCarb_C',
-        'OP_Enfriamiento_1raFiltracion_C', 'OP_Enfriamiento_2daCarb_C', 'OP_Calent_No8_TempSalida_C',
-        'OP_Calent_No9_TempSalida_C', 'OP_Calentador10_TempSalida_C', 'OP_Calentador11_12_TempSalida_C',
-        'OP_Calentador13_TempSalida_C', 'OP_Calentador14_TempSalida_C', 'OP_Evaporacion_BrixSalida_objetivo_pct',
-        'OP_Cocimiento_BrixMasaA_pct', 'OP_Cocimiento_BrixMasaB_pct', 'OP_Cocimiento_BrixMasaC_pct',
-        'OP_Pulpa_HumedadPellet_pct', 'OP_SecaderoPulpa_PCI_Gas_kWh_m3', 'OP_SecaderoPulpa_RendimientoTérmico_pct',
-        'OP_Turbina_ConsumoEspecifico_kWh_tVapor'
-    ]
 
-    config_user = {k: v for k, v in zip(keys_input, args)}
-    planta = PlantaAzucareraCompleta(config_user)
-    resultados = planta.simular()
+st.title("🏭 Simulador Interactivo de Planta Azucarera (Módulos 1 al 8)")
+st.markdown("Ajusta cualquiera de los **parámetros de entrada** en la barra lateral izquierda y observa en tiempo real los resultados del balance técnico completo por módulo o de forma global.")
 
-    # Función auxiliar para convertir diccionario de outputs a DataFrames y texto format
-    def data_to_outputs(mod_key, titulo_mod):
-        dict_data = resultados[mod_key]
-        df = pd.DataFrame(list(dict_data.items()), columns=['Variable Output del Balance', 'Valor Calculado'])
+# BARRA LATERAL (INPUTS)
+st.sidebar.header("⚙️ PARÁMETROS DE ENTRADA (INPUTS)")
 
-        txt = f"=====================================================================================\n"
-        txt += f" 📊 REPORTE DE SALIDAS DEL BALANCE: {titulo_mod.upper()}\n"
-        txt += f"=====================================================================================\n"
+with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=False):
+    in_molienda = st.slider("IN_Molienda_th (Molienda t/h)", 300.0, 800.0, 550.0, 5.0)
+    in_riqueza = st.slider("IN_Riqueza_Remolacha_pct (%)", 12.0, 22.0, 17.4, 0.1)
+    in_pureza = st.slider("IN_Pureza_Agricola_pct (%)", 85.0, 95.0, 90.4, 0.1)
+    in_marc = st.slider("IN_Marc_Fibra_pct (%)", 3.0, 7.0, 4.5, 0.1)
+    op_ratio_ext = st.slider("OP_DifPren_Ratio_Extraccion", 1.0, 1.3, 1.11, 0.01)
+    op_ms_pulpa = st.slider("OP_DifPren_MS_PulpaPrensada_pct (%)", 20.0, 35.0, 27.5, 0.5)
+    op_temp_crudo = st.slider("OP_DifPren_Temp_JugoCrudo_C (°C)", 15.0, 40.0, 26.0, 0.5)
+    op_ratio_aporte = st.slider("OP_DifPren_Ratio_AguaAporte_pct (%)", 15.0, 35.0, 24.93, 0.1)
+    op_mezcla_caliente = st.slider("OP_DifPren_Mezcla_AguaCaliente_pct (%)", 50.0, 100.0, 80.0, 1.0)
+    op_ratio_prensas = st.slider("OP_DifPren_Ratio_AguaPrensas_pct (%)", 20.0, 50.0, 37.04, 0.1)
+    op_ratio_recirc = st.slider("OP_DifPren_Ratio_Recirculacion_pct (%)", 100.0, 200.0, 165.0, 1.0)
+    op_ratio_desesp = st.slider("OP_DifPren_Ratio_Desespumador_pct (%)", 20.0, 70.0, 46.0, 1.0)
+    op_int17_tin = st.number_input("OP_DifPren_Int17_TempIn_C (°C)", value=62.0)
+    op_int17_tout = st.number_input("OP_DifPren_Int17_TempOut_C (°C)", value=72.0)
+    op_int18_tin = st.number_input("OP_DifPren_Int18_19_TempIn_C (°C)", value=71.4)
+    op_int18_tout = st.number_input("OP_DifPren_Int18_19_TempOut_C (°C)", value=73.3)
+    op_int20_tin = st.number_input("OP_DifPren_Int20_TempIn_C (°C)", value=71.4)
+    op_int20_tout = st.number_input("OP_DifPren_Int20_TempOut_C (°C)", value=76.5)
+
+with st.sidebar.expander("🔥 Módulo 2 (Calentamiento Jugo Crudo)", expanded=False):
+    op_int00_tout = st.number_input("OP_CalCrudo_Int00_TempOut_C (°C)", value=47.4)
+    op_int0_tout = st.number_input("OP_CalCrudo_Int0_TempOut_C (°C)", value=48.8)
+    op_int1_tout = st.number_input("OP_CalCrudo_Int1_TempOut_C (°C)", value=49.1)
+    op_int2_tout = st.number_input("OP_CalCrudo_Int2_TempOut_C (°C)", value=49.1)
+    op_int3_tout = st.number_input("OP_CalCrudo_Int3_TempOut_C (°C)", value=53.8)
+    op_int3a_tout = st.number_input("OP_CalCrudo_Int3a_TempOut_C (°C)", value=59.0)
+
+with st.sidebar.expander("🧪 Módulo 3 (Depuración y Carbonataciones)", expanded=False):
+    op_cao_pct = st.slider("OP_Depuracion_CaO_pct_remolacha (%)", 0.8, 2.0, 1.28, 0.01)
+    op_corefin_th = st.number_input("OP_AzucarCorefin_th (t/h)", value=8.80)
+    op_alc1_in = st.number_input("OP_1raCarb_AlcalinidadEntrada_gh (g/l)", value=2.50)
+    op_alc1_out = st.number_input("OP_1raCarb_AlcalinidadSalida (g/l)", value=0.90)
+    op_alc2_out = st.number_input("OP_2daCarb_AlcalinidadSalida (g/l)", value=0.27)
+    op_pkf_ms = st.slider("OP_PKF_MS_Barros_pct (%)", 50.0, 75.0, 64.9, 0.1)
+    op_c3b_tin = st.number_input("OP_Calent_3B_TempEntrada_C (°C)", value=61.4)
+    op_c3b_tout = st.number_input("OP_Calent_3B_TempSalida_C (°C)", value=65.5)
+    op_c4_tout = st.number_input("OP_Calent_4_TempSalida_C (°C)", value=82.3)
+    op_c56_tout = st.number_input("OP_Calent_56_TempSalida_C (°C)", value=87.8)
+    op_c7_tout = st.number_input("OP_Calent_7_TempSalida_C (°C)", value=87.8)
+    op_enf_1carb = st.number_input("OP_Enfriamiento_1raCarb_C (°C)", value=1.60)
+    op_enf_1filt = st.number_input("OP_Enfriamiento_1raFiltracion_C (°C)", value=1.00)
+    op_enf_2carb = st.number_input("OP_Enfriamiento_2daCarb_C (°C)", value=4.70)
+    op_c8_tout = st.number_input("OP_Calent_No8_TempSalida_C (°C)", value=86.2)
+    op_c9_tout = st.number_input("OP_Calent_No9_TempSalida_C (°C)", value=92.0)
+
+with st.sidebar.expander("♨️ Módulo 4 (Thin Juice Heating)", expanded=False):
+    op_c10_tout = st.number_input("OP_Calentador10_TempSalida_C (°C)", value=117.3)
+    op_c11_tout = st.number_input("OP_Calentador11_12_TempSalida_C (°C)", value=121.6)
+    op_c13_tout = st.number_input("OP_Calentador13_TempSalida_C (°C)", value=123.8)
+    op_c14_tout = st.number_input("OP_Calentador14_TempSalida_C (°C)", value=123.8)
+
+with st.sidebar.expander("💨 Módulo 5 (Evaporación)", expanded=False):
+    op_evap_brix_obj = st.slider("OP_Evaporacion_BrixSalida_objetivo_pct (%)", 60.0, 75.0, 69.4, 0.1)
+
+with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & Módulo 8 (Secadero)", expanded=False):
+    op_brix_masa_a = st.slider("OP_Cocimiento_BrixMasaA_pct (%)", 85.0, 95.0, 91.0, 0.1)
+    op_brix_masa_b = st.slider("OP_Cocimiento_BrixMasaB_pct (%)", 90.0, 98.0, 94.6, 0.1)
+    op_brix_masa_c = st.slider("OP_Cocimiento_BrixMasaC_pct (%)", 90.0, 98.0, 95.3, 0.1)
+    op_pellet_hum = st.slider("OP_Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
+    op_gas_pci = st.number_input("OP_SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
+    op_sec_rend = st.slider("OP_SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
+    op_turb_cons = st.number_input("OP_Turbina_ConsumoEspecifico_kWh_tVapor", value=45.0)
+
+# Diccionario consolidado de inputs de usuario para la clase
+config_usuario = {
+    'IN_Molienda_th': in_molienda,
+    'IN_Riqueza_Remolacha_pct': in_riqueza,
+    'IN_Pureza_Agricola_pct': in_pureza,
+    'IN_Marc_Fibra_pct': in_marc,
+    'OP_DifPren_Ratio_Extraccion': op_ratio_ext,
+    'OP_DifPren_MS_PulpaPrensada_pct': op_ms_pulpa,
+    'OP_DifPren_Temp_JugoCrudo_C': op_temp_crudo,
+    'OP_DifPren_Ratio_AguaAporte_pct': op_ratio_aporte,
+    'OP_DifPren_Mezcla_AguaCaliente_pct': op_mezcla_caliente,
+    'OP_DifPren_Ratio_AguaPrensas_pct': op_ratio_prensas,
+    'OP_DifPren_Ratio_Recirculacion_pct': op_ratio_recirc,
+    'OP_DifPren_Ratio_Desespumador_pct': op_ratio_desesp,
+    'OP_DifPren_Int17_TempIn_C': op_int17_tin,
+    'OP_DifPren_Int17_TempOut_C': op_int17_tout,
+    'OP_DifPren_Int18_19_TempIn_C': op_int18_tin,
+    'OP_DifPren_Int18_19_TempOut_C': op_int18_tout,
+    'OP_DifPren_Int20_TempIn_C': op_int20_tin,
+    'OP_DifPren_Int20_TempOut_C': op_int20_tout,
+    'OP_CalCrudo_Int00_TempOut_C': op_int00_tout,
+    'OP_CalCrudo_Int0_TempOut_C': op_int0_tout,
+    'OP_CalCrudo_Int1_TempOut_C': op_int1_tout,
+    'OP_CalCrudo_Int2_TempOut_C': op_int2_tout,
+    'OP_CalCrudo_Int3_TempOut_C': op_int3_tout,
+    'OP_CalCrudo_Int3a_TempOut_C': op_int3a_tout,
+    'OP_Depuracion_CaO_pct_remolacha': op_cao_pct,
+    'OP_AzucarCorefin_th': op_corefin_th,
+    'OP_1raCarb_AlcalinidadEntrada_gh': op_alc1_in,
+    'OP_1raCarb_AlcalinidadSalida': op_alc1_out,
+    'OP_2daCarb_AlcalinidadSalida': op_alc2_out,
+    'OP_PKF_MS_Barros_pct': op_pkf_ms,
+    'OP_Calent_3B_TempEntrada_C': op_c3b_tin,
+    'OP_Calent_3B_TempSalida_C': op_c3b_tout,
+    'OP_Calent_4_TempSalida_C': op_c4_tout,
+    'OP_Calent_56_TempSalida_C': op_c56_tout,
+    'OP_Calent_7_TempSalida_C': op_c7_tout,
+    'OP_Enfriamiento_1raCarb_C': op_enf_1carb,
+    'OP_Enfriamiento_1raFiltracion_C': op_enf_1filt,
+    'OP_Enfriamiento_2daCarb_C': op_enf_2carb,
+    'OP_Calent_No8_TempSalida_C': op_c8_tout,
+    'OP_Calent_No9_TempSalida_C': op_c9_tout,
+    'OP_Calentador10_TempSalida_C': op_c10_tout,
+    'OP_Calentador11_12_TempSalida_C': op_c11_tout,
+    'OP_Calentador13_TempSalida_C': op_c13_tout,
+    'OP_Calentador14_TempSalida_C': op_c14_tout,
+    'OP_Evaporacion_BrixSalida_objetivo_pct': op_evap_brix_obj,
+    'OP_Cocimiento_BrixMasaA_pct': op_brix_masa_a,
+    'OP_Cocimiento_BrixMasaB_pct': op_brix_masa_b,
+    'OP_Cocimiento_BrixMasaC_pct': op_brix_masa_c,
+    'OP_Pulpa_HumedadPellet_pct': op_pellet_hum,
+    'OP_SecaderoPulpa_PCI_Gas_kWh_m3': op_gas_pci,
+    'OP_SecaderoPulpa_RendimientoTérmico_pct': op_sec_rend,
+    'OP_Turbina_ConsumoEspecifico_kWh_tVapor': op_turb_cons
+}
+
+# Ejecución de la simulación con los inputs de la barra lateral
+planta = PlantaAzucareraCompleta(config_usuario)
+resultados = planta.simular()
+
+# ====================================================================
+# VISUALIZACIÓN DE RESULTADOS EN PESTAÑAS (TABS) EN STREAMLIT
+# ====================================================================
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    "Módulo 1: Difusión",
+    "Módulo 2: Cal. Crudo",
+    "Módulo 3: Depuración",
+    "Módulo 4: Jugo Fino",
+    "Módulo 5: Evaporación",
+    "Módulo 6: Cocimiento",
+    "Módulo 7: Condensados",
+    "Módulo 8: Secadero & Energía",
+    "📄 REPORTE GLOBAL INTEGRADO"
+])
+
+def render_modulo_tab(mod_key, titulo):
+    st.subheader(f"📊 Salidas del Balance: {titulo}")
+    dict_data = resultados[mod_key]
+    df = pd.DataFrame(list(dict_data.items()), columns=['Variable Output del Balance', 'Valor Calculado'])
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    # Generador de texto formateado para reporte individual
+    txt = f"=====================================================================================\n"
+    txt += f" 📊 REPORTE DE SALIDAS DEL BALANCE: {titulo.upper()}\n"
+    txt += f"=====================================================================================\n"
+    for k, v in dict_data.items():
+        if isinstance(v, (int, float)):
+            txt += f"  • {k:<52} : {v:>15,.2f}\n"
+        else:
+            txt += f"  • {k:<52} : {str(v):>15}\n"
+    txt += f"=====================================================================================\n"
+    st.text_area(f"Texto formateado - {titulo}", txt, height=300)
+
+with tab1:
+    render_modulo_tab('M1', 'Módulo 1: Difusiones y Prensas')
+
+with tab2:
+    render_modulo_tab('M2', 'Módulo 2: Calentamiento de Jugo Crudo')
+
+with tab3:
+    render_modulo_tab('M3', 'Módulo 3: Depuración y Carbonataciones')
+
+with tab4:
+    render_modulo_tab('M4', 'Módulo 4: Thin Juice Heating')
+
+with tab5:
+    render_modulo_tab('M5', 'Módulo 5: Estación de Evaporación')
+
+with tab6:
+    render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')
+
+with tab7:
+    render_modulo_tab('M7', 'Módulo 7: Refundición y Condensados')
+
+with tab8:
+    render_modulo_tab('M8', 'Módulo 8: Secadero de Pulpa y Energía')
+
+with tab9:
+    st.subheader("📄 Consolidado Global de Reportes (Módulos 1 al 8)")
+    reporte_global = ""
+    titulos_mods = {
+        'M1': 'Módulo 1: Difusiones y Prensas',
+        'M2': 'Módulo 2: Calentamiento de Jugo Crudo',
+        'M3': 'Módulo 3: Depuración y Carbonataciones',
+        'M4': 'Módulo 4: Thin Juice Heating',
+        'M5': 'Módulo 5: Estación de Evaporación',
+        'M6': 'Módulo 6: Cocimiento y Cristalización',
+        'M7': 'Módulo 7: Refundición y Condensados',
+        'M8': 'Módulo 8: Secadero de Pulpa y Energía'
+    }
+    for m_key, m_title in titulos_mods.items():
+        dict_data = resultados[m_key]
+        reporte_global += f"=====================================================================================\n"
+        reporte_global += f" 📊 REPORTE DE SALIDAS DEL BALANCE: {m_title.upper()}\n"
+        reporte_global += f"=====================================================================================\n"
         for k, v in dict_data.items():
             if isinstance(v, (int, float)):
-                txt += f"  • {k:<52} : {v:>15,.2f}\n"
+                reporte_global += f"  • {k:<52} : {v:>15,.2f}\n"
             else:
-                txt += f"  • {k:<52} : {str(v):>15}\n"
-        txt += f"=====================================================================================\n"
-        return df, txt
+                reporte_global += f"  • {k:<52} : {str(v):>15}\n"
+        reporte_global += f"=====================================================================================\n\n"
 
-    # Generación de resultados por cada módulo
-    df1, txt1 = data_to_outputs('M1', 'Módulo 1: Difusiones y Prensas')
-    df2, txt2 = data_to_outputs('M2', 'Módulo 2: Calentamiento de Jugo Crudo')
-    df3, txt3 = data_to_outputs('M3', 'Módulo 3: Depuración y Carbonataciones')
-    df4, txt4 = data_to_outputs('M4', 'Módulo 4: Thin Juice Heating')
-    df5, txt5 = data_to_outputs('M5', 'Módulo 5: Estación de Evaporación')
-    df6, txt6 = data_to_outputs('M6', 'Módulo 6: Cocimiento y Cristalización')
-    df7, txt7 = data_to_outputs('M7', 'Módulo 7: Refundición y Condensados')
-    df8, txt8 = data_to_outputs('M8', 'Módulo 8: Secadero de Pulpa y Energía')
-
-    reporte_global = txt1 + "\n" + txt2 + "\n" + txt3 + "\n" + txt4 + "\n" + txt5 + "\n" + txt6 + "\n" + txt7 + "\n" + txt8
-
-    return (
-        df1, txt1,
-        df2, txt2,
-        df3, txt3,
-        df4, txt4,
-        df5, txt5,
-        df6, txt6,
-        df7, txt7,
-        df8, txt8,
-        reporte_global
-    )
-
-# CONSTRUCCIÓN DE LA INTERFAZ CON GRADIO BLOCKS
-with gr.Blocks(title="Simulador de Planta Azucarera (Módulos 1 al 8)") as demo:
-    gr.Markdown("# 🏭 SIMULADOR INTERACTIVO DE PLANTA AZUCARERA (MÓDULOS 1 AL 8)")
-    gr.Markdown("Ajusta cualquiera de los **inputs de proceso** y presiona **'EJECUTAR SIMULACIÓN'** para recalcular el balance técnico completo.")
-
-    with gr.Row():
-        with gr.Column(scale=1):
-            gr.Markdown("### ⚙️ PARAMETROS DE ENTRADA (INPUTS)")
-
-            with gr.Accordion("🌱 Materia Prima & Módulo 1 (Difusión)", open=False):
-                in_molienda = gr.Slider(300, 800, value=550, label="IN_Molienda_th (Molienda t/h)")
-                in_riqueza = gr.Slider(12.0, 22.0, value=17.4, label="IN_Riqueza_Remolacha_pct (%)")
-                in_pureza = gr.Slider(85.0, 95.0, value=90.4, label="IN_Pureza_Agricola_pct (%)")
-                in_marc = gr.Slider(3.0, 7.0, value=4.5, label="IN_Marc_Fibra_pct (%)")
-                op_ratio_ext = gr.Slider(1.0, 1.3, value=1.11, label="OP_DifPren_Ratio_Extraccion")
-                op_ms_pulpa = gr.Slider(20.0, 35.0, value=27.5, label="OP_DifPren_MS_PulpaPrensada_pct (%)")
-                op_temp_crudo = gr.Slider(15.0, 40.0, value=26.0, label="OP_DifPren_Temp_JugoCrudo_C (°C)")
-                op_ratio_aporte = gr.Slider(15.0, 35.0, value=24.93, label="OP_DifPren_Ratio_AguaAporte_pct (%)")
-                op_mezcla_caliente = gr.Slider(50.0, 100.0, value=80.0, label="OP_DifPren_Mezcla_AguaCaliente_pct (%)")
-                op_ratio_prensas = gr.Slider(20.0, 50.0, value=37.04, label="OP_DifPren_Ratio_AguaPrensas_pct (%)")
-                op_ratio_recirc = gr.Slider(100.0, 200.0, value=165.0, label="OP_DifPren_Ratio_Recirculacion_pct (%)")
-                op_ratio_desesp = gr.Slider(20.0, 70.0, value=46.0, label="OP_DifPren_Ratio_Desespumador_pct (%)")
-                op_int17_tin = gr.Number(value=62.0, label="OP_DifPren_Int17_TempIn_C (°C)")
-                op_int17_tout = gr.Number(value=72.0, label="OP_DifPren_Int17_TempOut_C (°C)")
-                op_int18_tin = gr.Number(value=71.4, label="OP_DifPren_Int18_19_TempIn_C (°C)")
-                op_int18_tout = gr.Number(value=73.3, label="OP_DifPren_Int18_19_TempOut_C (°C)")
-                op_int20_tin = gr.Number(value=71.4, label="OP_DifPren_Int20_TempIn_C (°C)")
-                op_int20_tout = gr.Number(value=76.5, label="OP_DifPren_Int20_TempOut_C (°C)")
-
-            with gr.Accordion("🔥 Módulo 2 (Calentamiento Jugo Crudo)", open=False):
-                op_int00_tout = gr.Number(value=47.4, label="OP_CalCrudo_Int00_TempOut_C (°C)")
-                op_int0_tout = gr.Number(value=48.8, label="OP_CalCrudo_Int0_TempOut_C (°C)")
-                op_int1_tout = gr.Number(value=49.1, label="OP_CalCrudo_Int1_TempOut_C (°C)")
-                op_int2_tout = gr.Number(value=49.1, label="OP_CalCrudo_Int2_TempOut_C (°C)")
-                op_int3_tout = gr.Number(value=53.8, label="OP_CalCrudo_Int3_TempOut_C (°C)")
-                op_int3a_tout = gr.Number(value=59.0, label="OP_CalCrudo_Int3a_TempOut_C (°C)")
-
-            with gr.Accordion("🧪 Módulo 3 (Depuración y Carbonataciones)", open=False):
-                op_cao_pct = gr.Slider(0.8, 2.0, value=1.28, label="OP_Depuracion_CaO_pct_remolacha (%)")
-                op_corefin_th = gr.Number(value=8.80, label="OP_AzucarCorefin_th (t/h)")
-                op_alc1_in = gr.Number(value=2.50, label="OP_1raCarb_AlcalinidadEntrada_gh (g/l)")
-                op_alc1_out = gr.Number(value=0.90, label="OP_1raCarb_AlcalinidadSalida (g/l)")
-                op_alc2_out = gr.Number(value=0.27, label="OP_2daCarb_AlcalinidadSalida (g/l)")
-                op_pkf_ms = gr.Slider(50.0, 75.0, value=64.9, label="OP_PKF_MS_Barros_pct (%)")
-                op_c3b_tin = gr.Number(value=61.4, label="OP_Calent_3B_TempEntrada_C (°C)")
-                op_c3b_tout = gr.Number(value=65.5, label="OP_Calent_3B_TempSalida_C (°C)")
-                op_c4_tout = gr.Number(value=82.3, label="OP_Calent_4_TempSalida_C (°C)")
-                op_c56_tout = gr.Number(value=87.8, label="OP_Calent_56_TempSalida_C (°C)")
-                op_c7_tout = gr.Number(value=87.8, label="OP_Calent_7_TempSalida_C (°C)")
-                op_enf_1carb = gr.Number(value=1.60, label="OP_Enfriamiento_1raCarb_C (°C)")
-                op_enf_1filt = gr.Number(value=1.00, label="OP_Enfriamiento_1raFiltracion_C (°C)")
-                op_enf_2carb = gr.Number(value=4.70, label="OP_Enfriamiento_2daCarb_C (°C)")
-                op_c8_tout = gr.Number(value=86.2, label="OP_Calent_No8_TempSalida_C (°C)")
-                op_c9_tout = gr.Number(value=92.0, label="OP_Calent_No9_TempSalida_C (°C)")
-
-            with gr.Accordion("♨️ Módulo 4 (Thin Juice Heating)", open=False):
-                op_c10_tout = gr.Number(value=117.3, label="OP_Calentador10_TempSalida_C (°C)")
-                op_c11_tout = gr.Number(value=121.6, label="OP_Calentador11_12_TempSalida_C (°C)")
-                op_c13_tout = gr.Number(value=123.8, label="OP_Calentador13_TempSalida_C (°C)")
-                op_c14_tout = gr.Number(value=123.8, label="OP_Calentador14_TempSalida_C (°C)")
-
-            with gr.Accordion("💨 Módulo 5 (Evaporación)", open=False):
-                op_evap_brix_obj = gr.Slider(60.0, 75.0, value=69.4, label="OP_Evaporacion_BrixSalida_objetivo_pct (%)")
-
-            with gr.Accordion("🍬 Módulo 6 (Cocimiento) & Módulo 8 (Secadero)", open=False):
-                op_brix_masa_a = gr.Slider(85.0, 95.0, value=91.0, label="OP_Cocimiento_BrixMasaA_pct (%)")
-                op_brix_masa_b = gr.Slider(90.0, 98.0, value=94.6, label="OP_Cocimiento_BrixMasaB_pct (%)")
-                op_brix_masa_c = gr.Slider(90.0, 98.0, value=95.3, label="OP_Cocimiento_BrixMasaC_pct (%)")
-                op_pellet_hum = gr.Slider(5.0, 15.0, value=10.0, label="OP_Pulpa_HumedadPellet_pct (%)")
-                op_gas_pci = gr.Number(value=10.50, label="OP_SecaderoPulpa_PCI_Gas_kWh_m3")
-                op_sec_rend = gr.Slider(70.0, 95.0, value=85.0, label="OP_SecaderoPulpa_RendimientoTérmico_pct (%)")
-                op_turb_cons = gr.Number(value=45.0, label="OP_Turbina_ConsumoEspecifico_kWh_tVapor")
-
-            btn_run = gr.Button("🚀 EJECUTAR SIMULACIÓN COMPLETA", variant="primary")
-
-        with gr.Column(scale=2):
-            gr.Markdown("### 📊 SALIDAS Y REPORTES TÉCNICOS POR MÓDULO")
-
-            with gr.Tabs():
-                with gr.Tab("Módulo 1: Difusión"):
-                    df_m1 = gr.Dataframe(label="Outputs Módulo 1")
-                    txt_m1 = gr.Textbox(label="Reporte Módulo 1", lines=10)
-
-                with gr.Tab("Módulo 2: Cal. Crudo"):
-                    df_m2 = gr.Dataframe(label="Outputs Módulo 2")
-                    txt_m2 = gr.Textbox(label="Reporte Módulo 2", lines=10)
-
-                with gr.Tab("Módulo 3: Depuración"):
-                    df_m3 = gr.Dataframe(label="Outputs Módulo 3")
-                    txt_m3 = gr.Textbox(label="Reporte Módulo 3", lines=12)
-
-                with gr.Tab("Módulo 4: Jugo Fino"):
-                    df_m4 = gr.Dataframe(label="Outputs Módulo 4")
-                    txt_m4 = gr.Textbox(label="Reporte Módulo 4", lines=10)
-
-                with gr.Tab("Módulo 5: Evaporación"):
-                    df_m5 = gr.Dataframe(label="Outputs Módulo 5")
-                    txt_m5 = gr.Textbox(label="Reporte Módulo 5", lines=10)
-
-                with gr.Tab("Módulo 6: Cocimiento"):
-                    df_m6 = gr.Dataframe(label="Outputs Módulo 6")
-                    txt_m6 = gr.Textbox(label="Reporte Módulo 6", lines=10)
-
-                with gr.Tab("Módulo 7: Condensados"):
-                    df_m7 = gr.Dataframe(label="Outputs Módulo 7")
-                    txt_m7 = gr.Textbox(label="Reporte Módulo 7", lines=10)
-
-                with gr.Tab("Módulo 8: Secadero & Energía"):
-                    df_m8 = gr.Dataframe(label="Outputs Módulo 8")
-                    txt_m8 = gr.Textbox(label="Reporte Módulo 8", lines=10)
-
-                with gr.Tab("📄 REPORTE GLOBAL INTEGRADO"):
-                    txt_global = gr.Textbox(label="Consolidado de Reportes (Módulos 1 al 8)", lines=25)
-
-    all_inputs = [
-        in_molienda, in_riqueza, in_pureza, in_marc, op_ratio_ext, op_ms_pulpa, op_temp_crudo,
-        op_ratio_aporte, op_mezcla_caliente, op_ratio_prensas, op_ratio_recirc, op_ratio_desesp,
-        op_int17_tin, op_int17_tout, op_int18_tin, op_int18_tout, op_int20_tin, op_int20_tout,
-        op_int00_tout, op_int0_tout, op_int1_tout, op_int2_tout, op_int3_tout, op_int3a_tout,
-        op_cao_pct, op_corefin_th, op_alc1_in, op_alc1_out, op_alc2_out, op_pkf_ms, op_c3b_tin,
-        op_c3b_tout, op_c4_tout, op_c56_tout, op_c7_tout, op_enf_1carb, op_enf_1filt, op_enf_2carb,
-        op_c8_tout, op_c9_tout, op_c10_tout, op_c11_tout, op_c13_tout, op_c14_tout, op_evap_brix_obj,
-        op_brix_masa_a, op_brix_masa_b, op_brix_masa_c, op_pellet_hum, op_gas_pci, op_sec_rend, op_turb_cons
-    ]
-
-    all_outputs = [
-        df_m1, txt_m1,
-        df_m2, txt_m2,
-        df_m3, txt_m3,
-        df_m4, txt_m4,
-        df_m5, txt_m5,
-        df_m6, txt_m6,
-        df_m7, txt_m7,
-        df_m8, txt_m8,
-        txt_global
-    ]
-
-    btn_run.click(fn=simular_gradio, inputs=all_inputs, outputs=all_outputs)
-
-if __name__ == "__main__":
-    demo.launch()
+    st.text_area("Reporte Consolidado Completo", reporte_global, height=600)
