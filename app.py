@@ -473,7 +473,7 @@ class PlantaAzucareraCompleta:
         })
         return out
 
-    def mod_9_energia(self, m1, m5, m6):
+    def mod_9_energia(self, m1, m4, m5, m6):
         out = {}
         c = self.config
         pulpa = m1.get('OUT_DifPren_PulpaPrensada_Secado_th', 0)
@@ -515,7 +515,7 @@ class PlantaAzucareraCompleta:
         m7 = self.mod_7_refundicion(m5_init, m3, m6)
         m5 = self.mod_5_evaporacion(m4, m3, m6, m7, m1, m2)
         m8 = self.mod_8_condensados(m5, m6, m4, m3, m1, m2, m7)
-        m9 = self.mod_9_energia(m1, m5, m6)
+        m9 = self.mod_9_energia(m1, m4, m5, m6)
 
         # Redondear y guardar
         for modulo in [m1, m2, m3, m4, m5, m6, m7, m8, m9]:
