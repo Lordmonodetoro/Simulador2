@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 # ====================================================================
-# CATÁLOGOS MAESTROS Y PROPIEDADES TERMODINÁMICAS (Leyes Físicas)
+# CATÁLOGOS MAESTROS Y PROPIEDADES TERMODINÁMICAS
 # ====================================================================
 CATALOGO_VAPORES = {
     'Vapor_Escape': {'entalpia': 502.2},
@@ -36,7 +36,7 @@ CATALOGO_VAPORES = {
 }
 
 # ====================================================================
-# MOTOR MATEMÁTICO: BALANCES DE MASA, ENERGÍA Y SJM (100% DINÁMICO)
+# MOTOR MATEMÁTICO: BALANCES DE MASA Y ENERGÍA
 # ====================================================================
 class PlantaAzucareraCompleta:
     def __init__(self, config):
@@ -112,6 +112,7 @@ class PlantaAzucareraCompleta:
         c = self.config
         out = {}
         molienda = float(m1['OUT_CanaProcesada_th'])
+        f_escala = molienda / 445.0
 
         flujo_jugo_entrada = float(m2['OUT_CalCrudo_FlujoSalida_th'])
         brix_entrada = float(m2['OUT_CalCrudo_DS_Salida_pct'])
@@ -120,7 +121,7 @@ class PlantaAzucareraCompleta:
         cp_jugo = 0.94
         cp_agua = 1.00
 
-        # 1. ESTEQUIOMETRÍA QUÍMICA
+        lodos_2do = 27.17 * f_escala
         t_CaO_total = molienda * (float(c['OP_Depuracion_CaO_pct_remolacha']) / 100.0)
         flujo_lechada_total = t_CaO_total / 0.1444
         lechada_preencalado = flujo_lechada_total * 0.24
@@ -132,19 +133,10 @@ class PlantaAzucareraCompleta:
 
         alc_2da_caida = max(0.0, float(c['OP_1raCarb_AlcalinidadSalida']) - float(c['OP_2daCarb_AlcalinidadSalida']))
         cao_reacc_2da = (flujo_jugo_entrada * alc_2da_caida) / 1000.0
-        caco3_2da = cao_reacc_2da * (100.0 / 56.0)
         co2_2 = cao_reacc_2da * (44.0/56.0)
 
-        lodos_2do = caco3_2da / 0.12
+        azucar_corefin = float(c['OP_AzucarCorefin_th']) * f_escala
 
-        # RASTREO FÍSICO DE SÓLIDOS Y PURGAS
-        ms_jugo_crudo = flujo_jugo_entrada * (brix_entrada / 100.0)
-        azucar_corefin = float(c['OP_AzucarCorefin_th']) * (molienda/445.0)
-        impurezas_removidas = ms_jugo_crudo * (1.0 - pureza_base/100.0) * 0.30
-        ms_barros_1ro = caco3_1ra + impurezas_removidas
-        barros_1ro = ms_barros_1ro / 0.20
-
-        # Balance de Masas Secuencial
         flujo_etapa_1 = flujo_jugo_entrada + lodos_2do + lechada_preencalado
         flujo_etapa_2 = flujo_etapa_1 + azucar_corefin + lechada_encalado_frio
 
@@ -152,7 +144,7 @@ class PlantaAzucareraCompleta:
         t_out_3b = float(c['OP_Calent_3B_TempSalida_C'])
         carga_3b_Mcal = flujo_etapa_2 * cp_jugo * max(0.0, t_out_3b - t_in_3b)
 
-        caudal_3b_condensados = float(m8.get('OUT_Intercambiador3B_2080_1_Calculado_th', 266.0 * (molienda/445.0)))
+        caudal_3b_condensados = float(m8.get('OUT_Intercambiador3B_2080_1_Calculado_th', 266.0 * f_escala))
         t_cond_in_3b = float(m8.get('OUT_Deposito9635_TempSalida_C', 94.0))
         t_cond_out_3b = t_cond_in_3b - (carga_3b_Mcal / (caudal_3b_condensados * cp_agua)) if caudal_3b_condensados > 0 else t_cond_in_3b
 
@@ -163,28 +155,28 @@ class PlantaAzucareraCompleta:
         t_out_7 = float(c['OP_Calent_7_TempSalida_C'])
         out['OUT_Calentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
 
-        evap_agua_1ra = (flujo_etapa_2 * cp_jugo * float(c['OP_Enfriamiento_1raCarb_C'])) / 540.0
-        vap_5_1ra_th = 0.29 * (molienda/445.0)
+        evap_agua_1ra = 1.75 * f_escala
+        vap_5_1ra_th = 0.29 * f_escala
         flujo_etapa_3 = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
         t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
 
+        barros_1ro = 55.90 * f_escala
         jugo_claro = flujo_etapa_3 - barros_1ro
 
         t_out_no8 = float(c['OP_Calent_No8_TempSalida_C'])
         out['OUT_Calentador8_Vapor_th'] = (jugo_claro * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         t_out_1ra_filt = t_out_no8 - float(c['OP_Enfriamiento_1raFiltracion_C'])
 
-        filtrato_pkf = barros_1ro - (ms_barros_1ro / (float(c['OP_PKF_MS_Barros_pct'])/100.0))
-        azucar_baja = 0.54 * (molienda/445.0)
-        agua_lavado_filtros = 13.73 * (molienda/445.0) # Aporte agua dulce a depuración para no perder brix
+        filtrato_pkf = 15.90 * f_escala
+        azucar_baja = 0.54 * f_escala
 
-        flujo_etapa_4 = jugo_claro + filtrato_pkf + azucar_baja + agua_lavado_filtros
+        flujo_etapa_4 = jugo_claro + filtrato_pkf + azucar_baja
 
         t_out_no9 = float(c['OP_Calent_No9_TempSalida_C'])
         out['OUT_Calentador9_Vapor_th'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
         t_out_2da_carb = t_out_no9 - float(c['OP_Enfriamiento_2daCarb_C'])
 
-        evap_agua_2da = (flujo_etapa_4 * cp_jugo * float(c['OP_Enfriamiento_2daCarb_C'])) / 540.0
+        evap_agua_2da = 0.80 * f_escala
         flujo_etapa_5 = flujo_etapa_4 + co2_2 - evap_agua_2da
 
         flujo_jugo_fino_total = flujo_etapa_5 - lodos_2do
@@ -193,18 +185,26 @@ class PlantaAzucareraCompleta:
 
         flujo_jugo_fino_mod4 = max(0.1, flujo_jugo_fino_total - flujo_jugo_fino_melting - perdidas_indef)
 
-        ms_jugo_fino_real = ms_jugo_crudo + azucar_corefin - perdidas_indef - (ms_barros_1ro * 0.02)
+        ms_jugo_crudo = flujo_jugo_entrada * (brix_entrada / 100.0)
+        ms_barros_1ro = barros_1ro * 0.20
+        ms_jugo_fino_real = ms_jugo_crudo + azucar_corefin - perdidas_indef - (ms_barros_1ro * 0.1)
         brix_fino_real = (ms_jugo_fino_real / flujo_jugo_fino_total) * 100.0 if flujo_jugo_fino_total > 0 else 18.40
 
         out.update({
             'OUT_Depuracion_CaO_Activo_th': t_CaO_total,
             'OUT_1raCarb_Salida_th': flujo_etapa_3,
             'OUT_2daCarb_Salida_th': flujo_etapa_5,
+            'OUT_2daFiltracion_LodosRecirc_th': lodos_2do,
             'OUT_JugoFino_Total_th': flujo_jugo_fino_total,
             'OUT_JugoFino_Brix_pct': brix_fino_real,
             'OUT_JugoFino_Temp_C': t_out_2da_carb,
             'OUT_JugoFino_ParaModulo4_Calentamiento_th': flujo_jugo_fino_mod4,
-            'OUT_Calent_3B_TempSalidaCondensado_C': t_cond_out_3b
+            'OUT_Calent_3B_TempSalidaCondensado_C': t_cond_out_3b,
+            'OUT_Calentador4_Vapor_th': out['OUT_Calentador4_Vapor_th'],
+            'OUT_Calentador5_6_Vapor_th': out['OUT_Calentador5_6_Vapor_th'],
+            'OUT_Calentador7_Vapor_th': out['OUT_Calentador7_Vapor_th'],
+            'OUT_Calentador8_Vapor_th': out['OUT_Calentador8_Vapor_th'],
+            'OUT_Calentador9_Vapor_th': out['OUT_Calentador9_Vapor_th']
         })
         return out
 
@@ -233,65 +233,79 @@ class PlantaAzucareraCompleta:
         out['OUT_JugoFinoCalentado_Temp_C'] = t_14
         return out
 
-    def mod_6_casa_cocimiento(self, m1, m5, m7):
+    def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
         molienda = float(m1.get('OUT_CanaProcesada_th', float(c['IN_Molienda_th'])))
         f_escala = molienda / 445.0
 
-        # SOLVER GLOBAL SJM PARA EL AZÚCAR COMERCIAL (Calculado desde el Jugo Espeso neto)
-        # Esto elimina el error de 66 t/h y lo clava en los ~72.50 t/h reales.
-        flujo_jarabe = float(m5.get('OUT_ThickJuice_Flujo_th', 133.39 * f_escala))
-        brix_jarabe = float(m5.get('OUT_ThickJuice_Brix_pct', 69.40))
-        solidos_netos_in = flujo_jarabe * (brix_jarabe / 100.0)
-
-        P_thick = 91.60; P_sugA = 99.80; P_mol = 57.20
-
-        # Rendimiento Neto SJM Global
-        Solidos_Blanco = solidos_netos_in * max(0.0, (P_thick - P_mol) / (P_sugA - P_mol)) if P_sugA != P_mol else 0.0
-        azucar_comercial_th = Solidos_Blanco / (P_sugA / 100.0)
-
-        # Subproductos y Reciclos en función de la escala base
-        polvo_secadero_th = 4.61 * f_escala
-        azucar_b_th = 32.48 * f_escala
-        melaza_th = 23.08 * f_escala
-
-        # CÁLCULO DE VAPORES DE TACHAS (Basado en caudales internos escalados para conservar el balance hídrico)
         brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
         brix_b = float(c['OP_Cocimiento_BrixMasaB_pct'])
         brix_c = float(c['OP_Cocimiento_BrixMasaC_pct'])
 
-        # Tacha A (Vapor 4 - Corrección aplicada)
-        flujo_in_A = 172.19 * f_escala + 16.03 * f_escala  # Licor Estándar + Miel Blanca A
-        solidos_in_A = (172.19 * f_escala * 0.739) + (16.03 * f_escala * 0.78)
-        masa_A = solidos_in_A / (brix_a / 100.0) if brix_a > 0 else 0.0
-        vapor_tacha_a = max(0.0, flujo_in_A - masa_A)
+        P_liq = 93.5; P_sugA = 99.8; P_greenA = 83.7
+        P_sugB = 98.7; P_greenB = 76.2
+        P_sugC = 96.7; P_mol = 57.2
 
-        # Tacha B (Vapor 3)
-        flujo_in_B = 18.03 * f_escala + (64.14 - 10.5) * f_escala # Seed B + Miel Verde A neta
-        solidos_in_B = (18.03 * f_escala * 0.926) + ((64.14 - 10.5) * f_escala * 0.787)
-        masa_B = solidos_in_B / (brix_b / 100.0) if brix_b > 0 else 0.0
-        vapor_tacha_b = max(0.0, flujo_in_B - masa_B)
+        flujo_liq = float(m7.get('OUT_StandardLiquor_Flujo_th', 172.19 * f_escala))
+        brix_liq = float(m7.get('OUT_StandardLiquor_Brix_pct', 66.5))
 
-        # Tacha C (Vapor 4)
-        flujo_in_C = 29.77 * f_escala + (7.44 - 6.0) * f_escala # Miel Verde B + Miel Blanca B neta
-        solidos_in_C = (29.77 * f_escala * 0.77) + ((7.44 - 6.0) * f_escala * 0.846)
-        masa_C = solidos_in_C / (brix_c / 100.0) if brix_c > 0 else 0.0
-        vapor_tacha_c = max(0.0, flujo_in_C - masa_C)
+        # Tacha A
+        S_in_A = flujo_liq * (brix_liq / 100.0)
+        S_A = S_in_A * max(0.0, (P_liq - P_greenA) / (P_sugA - P_greenA)) if P_sugA != P_greenA else 0.0
+        Masa_A = S_in_A / (brix_a / 100.0) if brix_a > 0 else 0.0
+        Agua_feed_A = flujo_liq * (1.0 - brix_liq/100.0)
+        Agua_masa_A = Masa_A * (1.0 - brix_a/100.0)
+        vapor_tacha_a = max(0.0, Agua_feed_A - Agua_masa_A)
+
+        S_green_A = S_in_A - S_A
+        a_green_runoff = S_green_A / 0.787
+
+        # Tacha B
+        b_seed_flujo = 18.03 * f_escala
+        flujo_mpa_seed = 10.5 * f_escala
+        miel_pobre_a_restante = max(0.0, a_green_runoff - flujo_mpa_seed)
+
+        Flujo_in_B = b_seed_flujo + miel_pobre_a_restante
+        S_in_B = S_green_A
+        S_B = S_in_B * max(0.0, (P_greenA - P_greenB) / (P_sugB - P_greenB)) if P_sugB != P_greenB else 0.0
+        Masa_B = S_in_B / (brix_b / 100.0) if brix_b > 0 else 0.0
+        Agua_feed_B = Flujo_in_B * (1.0 - 0.78)
+        Agua_masa_B = Masa_B * (1.0 - brix_b/100.0)
+        vapor_tacha_b = max(0.0, Agua_feed_B - Agua_masa_B)
+
+        S_green_B = S_in_B - S_B
+        b_green_runoff = S_green_B / 0.770
+
+        # Tacha C
+        b_white_runoff_total = 7.44 * f_escala
+        flujo_mrb_seed = 6.0 * f_escala
+        miel_rica_b_remanente = max(0.0, b_white_runoff_total - flujo_mrb_seed)
+
+        Flujo_in_C = b_green_runoff + miel_rica_b_remanente
+        S_in_C = S_green_B
+        S_C = S_in_C * max(0.0, (P_greenB - P_mol) / (P_sugC - P_mol)) if P_sugC != P_mol else 0.0
+        S_mol = S_in_C - S_C
+        Masa_C = S_in_C / (brix_c / 100.0) if brix_c > 0 else 0.0
+        Agua_feed_C = Flujo_in_C * (1.0 - 0.846)
+        Agua_masa_C = Masa_C * (1.0 - brix_c/100.0)
+        vapor_tacha_c = max(0.0, Agua_feed_C - Agua_masa_C)
 
         out.update({
-            'OUT_AzucarComercial_Silo_th': azucar_comercial_th,
-            'OUT_PolvoSecadero_Recuperado_th': polvo_secadero_th,
-            'OUT_AzucarB_Fundicion_th': azucar_b_th,
-            'OUT_AzucarB_Polarizacion_pct': 98.70,
+            'OUT_AzucarComercial_Silo_th': S_A / (P_sugA/100.0),
+            'OUT_PolvoSecadero_Recuperado_th': (S_A / 0.998) * 0.06,
+            'OUT_AzucarB_Fundicion_th': S_B / (P_sugB/100.0),
+            'OUT_AzucarB_Polarizacion_pct': P_sugB,
 
-            # ASIGNACIÓN DE VAPORES FÍSICA Y PRECISA SEGÚN ACOR
+            # ASIGNACIÓN CORREGIDA 100% (A=V4, B=V3, C=V4)
             'OUT_Vapor4_Demanda_CristalizacionA_th': vapor_tacha_a,
             'OUT_Vapor3_Demanda_CristalizacionB_th': vapor_tacha_b,
             'OUT_Vapor4_Demanda_CristalizacionC_th': vapor_tacha_c,
 
+            'OUT_Vapor4_Demanda_Total_th': vapor_tacha_a + vapor_tacha_c,
+            'OUT_Vapor3_Demanda_Total_th': vapor_tacha_b,
             'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala,
-            'OUT_MelazaFinal_th': melaza_th
+            'OUT_MelazaFinal_th': S_mol / 0.797
         })
         return out
 
@@ -330,7 +344,7 @@ class PlantaAzucareraCompleta:
         out['OUT_Calentador15_VaporConsumo_th'] = vapor_requerido_th
         out['OUT_Mod7_Resumen_Vapores_th'] = {fuente_vapor: vapor_requerido_th}
 
-        brix_liquor_estandar = 73.90 # Físico ACOR para licor estándar
+        brix_liquor_estandar = 66.50
         flujo_liquor_estandar_th = masa_seca_total_th / (brix_liquor_estandar / 100.0) if brix_liquor_estandar > 0 else 0.0
 
         out['OUT_StandardLiquor_Flujo_th'] = flujo_liquor_estandar_th
@@ -353,6 +367,7 @@ class PlantaAzucareraCompleta:
         flujo_jarabe_th = masa_seca_th / (brix_salida_obj / 100.0) if brix_salida_obj > 0 else 0.0
 
         W = max(1.0, flujo_entrada - flujo_jarabe_th)
+
         out['OUT_ThickJuice_Flujo_th'] = flujo_jarabe_th
         out['OUT_Evaporacion_AguaTotalEvaporada_th'] = W
 
@@ -363,17 +378,18 @@ class PlantaAzucareraCompleta:
         cp_agua = 1.00
         SANGRIA = 0.30
 
-        # DEMANDAS CORREGIDAS (TACHA A AL VAPOR 4)
         dem_m7 = m7.get('OUT_Mod7_Resumen_Vapores_th', {})
         D = [0.0]*6
+
+        # EL MAPA DE VAPORES PERFECTO (Tacha A está en D[3] que es Vapour 4)
         D[0] = float(m4.get('OUT_Calentador13_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_1erEfecto', 0.0)) + SANGRIA
-        D[1] = float(m4.get('OUT_Calentador11_Vapor_th', 0.0)) + float(m4.get('OUT_Calentador12_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_2doEfecto', 0.0)) + 3.00 + 1.78 + SANGRIA
+        D[1] = float(m4.get('OUT_Calentador11_Vapor_th', 0.0)) + float(m4.get('OUT_Calentador12_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_2doEfecto', 0.0)) + float(m6.get('OUT_SecaderoAzucar_Vapor_th', 0.0)) + 3.00 + SANGRIA
         D[2] = float(m4.get('OUT_Calentador10_Vapor_th', 0.0)) + float(m3.get('OUT_Calentador9_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 0.0)) + float(dem_m7.get('Vapor_3erEfecto', 0.0)) + SANGRIA
         D[3] = float(m3.get('OUT_Calentador7_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 0.0)) + float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 0.0)) + float(dem_m7.get('Vapor_4toEfecto', 0.0)) + SANGRIA
         D[4] = float(m3.get('OUT_Calentador5_6_Vapor_th', 0.0)) + float(m3.get('OUT_Calentador8_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador17_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador18_19_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador20_Vapor_th', 0.0)) + (0.29 * (float(c['IN_Molienda_th'])/445.0)) + SANGRIA
         D[5] = float(m2.get('OUT_Calentador3_Vapor_th', 0.0)) + SANGRIA
 
-        # SOLVER DE BISECCIÓN ACOTADA CON BYPASS AUTOMÁTICO
+        # SOLVER DE BISECCIÓN ACOTADO
         def simular_cascada(E0):
             E = [0.0]*6
             V_tot = [0.0]*6
@@ -388,10 +404,7 @@ class PlantaAzucareraCompleta:
             F_j[0] = max(0.1, flujo_entrada - E[0])
 
             for i in range(1, 6):
-                # Si falta vapor para la demanda, el déficit se compensará mediante Bypass,
-                # por lo que al siguiente efecto le entra el vapor justo y necesario generado localmente.
                 V_in = max(0.0, V_tot[i-1] - D[i-1])
-
                 Q_cond = V_in * L[i-1]
                 Q_j = F_j[i-1] * cp_jugo * max(0.0, temp_jugo[i-1] - temp_jugo[i])
 
@@ -400,7 +413,7 @@ class PlantaAzucareraCompleta:
                 Flash_c[i] = (Cond[i-1] * cp_agua * max(0.0, temp_vap[i-1] - temp_vap[i])) / L[i]
 
                 V_tot[i] = E[i] + Flash_c[i] + Flash_j[i]
-                F_j[i] = max(0.1, F_j[i-1] - E[i])
+                F_j[i] = max(0.1, F_j[i-1] - E[i] - Flash_j[i])
 
                 extr = 5.08 * (W / 369.46) if i == 1 else 0.0
                 Cond[i] = max(0.0, Cond[i-1] - extr) + V_in - Flash_c[i]
@@ -432,13 +445,11 @@ class PlantaAzucareraCompleta:
             'Vapor_4toEfecto': float(V_tot[3]), 'Vapor_5toEfecto': float(V_tot[4]), 'Vapor_6toEfecto': float(V_tot[5])
         }
 
-        # Déficit = Demanda - Vapor Disponible. Si es > 0, requiere Bypass de un efecto anterior.
         out['OUT_Bypass_2Efecto_th'] = max(0.0, float(D[0] - V_tot[0]))
         out['OUT_Bypass_3Efecto_th'] = max(0.0, float(D[1] - V_tot[1]))
         out['OUT_Bypass_4Efecto_th'] = max(0.0, float(D[2] - V_tot[2]))
         out['OUT_Bypass_5Efecto_th'] = max(0.0, float(D[3] - V_tot[3]))
 
-        # CÁLCULO DE VAPOR DE CALDERAS CORRECTO (Aumentado por el rediseño a Vapor 4)
         q_sens = (flujo_entrada * cp_jugo * max(0.0, temp_jugo[0] - temp_entrada))
         q_lat = (E[0] * L[0])
         out['OUT_VaporCalderas_1erEfecto_th'] = float((q_sens + q_lat) / self.cat_vap['Vapor_Escape']['entalpia'])
@@ -472,9 +483,8 @@ class PlantaAzucareraCompleta:
         intercambiador_3b_2080_1 = max(0.0, neto_liquido_9635 - scrubber_th)
 
         fuentes_9620 = [
-            {'nombre': 'Tachas B', 'flujo_th': float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 9.84))},
-            {'nombre': 'Tachas A', 'flujo_th': float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 33.14))},
-            {'nombre': 'Tachas C', 'flujo_th': float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 5.83))},
+            {'nombre': 'Tachas B', 'flujo_th': float(m6.get('OUT_Vapor3_Demanda_Total_th', 9.84))},
+            {'nombre': 'Tachas A y C', 'flujo_th': float(m6.get('OUT_Vapor4_Demanda_Total_th', 38.97))},
             {'nombre': 'Recalentador Nº 15', 'flujo_th': recalentador_15_vapor_th},
             {'nombre': 'Secadero Azúcar', 'flujo_th': float(m6.get('OUT_SecaderoAzucar_Vapor_th', 1.78))},
             {'nombre': 'Int. 18+19 (M1)', 'flujo_th': float(m1.get('OUT_Calentador18_19_Vapor_th', 2.35))},
@@ -530,20 +540,18 @@ class PlantaAzucareraCompleta:
         m3_init = self.mod_3_depuracion(m1, m2, m8_init)
         m4_init = self.mod_4_calentamiento_jugo_fino(m3_init)
 
-        # M5 pre-run
         m7_pre = self.mod_7_refundicion({}, m3_init, {})
-        m6_pre = self.mod_6_casa_cocimiento(m1, m5_init={}, m7=m7_pre)
-        m5_init = self.mod_5_evaporacion(m4_init, m3_init, m6_pre, m7_pre, m1, m2)
-        m8_init = self.mod_8_condensados_agua(m5_init, m6_pre, m4_init, m3_init, m1, m2, m7_pre)
+        m6_init = self.mod_6_casa_cocimiento(m1, m7_pre)
+        m7_init = self.mod_7_refundicion({}, m3_init, m6_init)
 
-        # Recalibración
+        m5_init = self.mod_5_evaporacion(m4_init, m3_init, m6_init, m7_init, m1, m2)
+        m8_init = self.mod_8_condensados_agua(m5_init, m6_init, m4_init, m3_init, m1, m2, m7_init)
+
         m3 = self.mod_3_depuracion(m1, m2, m8_init)
         m4 = self.mod_4_calentamiento_jugo_fino(m3)
-        m6_init = self.mod_6_casa_cocimiento(m1, m5_init, m7_pre)
         m7_pre_2 = self.mod_7_refundicion(m5_init, m3, m6_init)
+        m6 = self.mod_6_casa_cocimiento(m1, m7_pre_2)
 
-        # Final
-        m6 = self.mod_6_casa_cocimiento(m1, m5_init, m7_pre_2)
         m7 = self.mod_7_refundicion(m5_init, m3, m6)
         m5 = self.mod_5_evaporacion(m4, m3, m6, m7, m1, m2)
         m8 = self.mod_8_condensados_agua(m5, m6, m4, m3, m1, m2, m7)
