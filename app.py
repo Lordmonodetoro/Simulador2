@@ -171,12 +171,14 @@ class PlantaAzucareraCompleta:
         lechada_encalado_frio = lechada_total_masa * (30.00 / 39.47)
 
         flujo_preencalado = flujo_jugo_entrada + lodos_2do + lechada_preencalado
+        ms_jugo_ent = flujo_jugo_entrada * (brix_entrada / 100.0)
+        ms_pre = ms_jugo_ent + (t_CaO_total * 0.5)
 
         # Encalado frío
         azucar_corefin = c['OP_AzucarCorefin_th'] * f_escala
-        flujo_encalado_frio = flujo_preencalado + azucar_corefin + lechada_encalado_frio
+        flujo_post_preencalado = flujo_preencalado + azucar_corefin
+        flujo_encalado_frio = flujo_post_preencalado + lechada_encalado_frio
 
-        # Intercambiadores
         t_in_3b = c['OP_Calent_3B_TempEntrada_C']
         t_out_3b = c['OP_Calent_3B_TempSalida_C']
         carga_3b_kwh = flujo_encalado_frio * cp_jugo * (t_out_3b - t_in_3b)
@@ -198,7 +200,6 @@ class PlantaAzucareraCompleta:
         t_out_7 = c['OP_Calent_7_TempSalida_C']
         vap_7_th = (flujo_encalado_frio * cp_jugo * (t_out_7 - t_out_56)) / LATENTE_VAPOR_KWHT
 
-        # Carbonatación 1
         alc_neut = max(0.0, c['OP_1raCarb_AlcalinidadEntrada_gh'] - c['OP_1raCarb_AlcalinidadSalida'])
         co2_1 = (flujo_encalado_frio * alc_neut * (44.0/56.0)) / 100.0
         evap_agua_1ra = 1.75 * f_escala
@@ -206,7 +207,6 @@ class PlantaAzucareraCompleta:
         t_out_1ra_carb = t_out_7 - c['OP_Enfriamiento_1raCarb_C']
         flujo_1ra_carb = flujo_encalado_frio + co2_1 + vap_5_1ra - evap_agua_1ra
 
-        # 1ª Filtración
         barros_1ro = 55.90 * f_escala
         jugo_claro = flujo_1ra_carb - barros_1ro
 
@@ -221,13 +221,11 @@ class PlantaAzucareraCompleta:
         t_out_no9 = c['OP_Calent_No9_TempSalida_C']
         vap_no9_th = (flujo_hacia_2da * cp_jugo * (t_out_no9 - t_out_1ra_filt)) / LATENTE_VAPOR_KWHT
 
-        # 2ª Carbonatación
         co2_2 = max(0.0, (alc_neut - c['OP_1raCarb_AlcalinidadSalida'])) * (44.0/56.0)
         evap_agua_2da = 0.80 * f_escala
         t_out_2da_carb = t_out_no9 - c['OP_Enfriamiento_2daCarb_C']
         flujo_2da_carb = flujo_hacia_2da + co2_2 - evap_agua_2da
 
-        # Purga de Lodos y Salida
         perdidas_indef = 0.70 * f_escala
         flujo_jugo_fino_total = flujo_2da_carb - lodos_2do
 
@@ -423,6 +421,7 @@ class PlantaAzucareraCompleta:
         out = {}
 
         flujo_entrada = m4['OUT_JugoFinoCalentado_Flujo_th']
+        temp_entrada = m4['OUT_JugoFinoCalentado_Temp_C']
         brix_entrada = m3.get('OUT_JugoFino_Brix_pct', 18.40)
 
         masa_seca_th = flujo_entrada * (brix_entrada / 100.0)
@@ -433,15 +432,14 @@ class PlantaAzucareraCompleta:
         out['OUT_ThickJuice_Flujo_th'] = flujo_jarabe_th
         out['OUT_Evaporacion_AguaTotalEvaporada_th'] = agua_total_evaporada_th
 
-        # Ecuaciones estrictas del balance ACOR (Page 5)
-        evap_base = [107.72, 100.30, 96.62, 46.78, 4.42, 13.58]
-        escala_evap = agua_total_evaporada_th / sum(evap_base)
+        evaporacion_base_efectos = [107.72, 100.30, 96.62, 46.78, 4.42, 13.58]
+        escala_evap = agua_total_evaporada_th / sum(evaporacion_base_efectos)
 
         temp_vap = [131.0, 126.4, 120.2, 112.4, 106.5, 94.0]
         cp_agua = 4.186
         h_fg_vap = [2170.0, 2185.0, 2202.0, 2224.0, 2238.0, 2272.0]
 
-        cond = [x * escala_evap for x in evap_base]
+        cond = [x * escala_evap for x in evaporacion_base_efectos]
 
         m_cond_2_neto = cond[1] - (5.08 * escala_evap)
         dt_2_3 = temp_vap[1] - temp_vap[2]
@@ -492,8 +490,6 @@ class PlantaAzucareraCompleta:
         out['OUT_Bypass_4Efecto_th'] = bypass_4
         out['OUT_Bypass_5Efecto_th'] = bypass_5
 
-        # CÁLCULO ESTRICTO DE ACOR PARA EL VAPOR DE CALDERAS:
-        # Relación de balance: 117.34 t/h escape para 107.72 t/h de evaporación en 1º efecto.
         out['OUT_VaporCalderas_1erEfecto_th'] = cond[0] * (117.34 / 107.72)
 
         out['OUT_Balance_Vapores_Demanda'] = {
@@ -607,7 +603,6 @@ class PlantaAzucareraCompleta:
         m8 = self.mod_8_condensados_agua(m5, m6, m4, m3, m1, m2, m7)
         m9 = self.mod_9_energia(m1, m4, m5, m6)
 
-        # Redondeos para visualización limpia
         for modulo in [m1, m2, m3, m4, m5, m6, m7, m8, m9]:
             for k, v in modulo.items():
                 if isinstance(v, (int, float)): modulo[k] = round(v, 2)
@@ -721,6 +716,7 @@ config_usuario = {
 
     'OP_Calentador10_TempSalida_C': op_c10_tout, 'OP_Calentador11_12_TempSalida_C': op_c11_tout, 'OP_Calentador13_TempSalida_C': op_c13_tout, 'OP_Calentador14_TempSalida_C': op_c14_tout,
     'OP_Vapor_Calentador10': 'Vapor_3erEfecto', 'OP_Vapor_Calentador11_12': 'Vapor_2doEfecto', 'OP_Vapor_Calentador13': 'Vapor_1erEfecto', 'OP_Vapor_Calentador14': 'Vapor_Escape',
+    'OP_CalorEspecifico_JugoFino_kWh_tC': 1.069,
 
     'OP_Evaporacion_BrixSalida_objetivo_pct': op_evap_brix_obj,
     'OP_Cocimiento_BrixMasaA_pct': op_brix_masa_a, 'OP_Cocimiento_BrixMasaB_pct': op_brix_masa_b, 'OP_Cocimiento_BrixMasaC_pct': op_brix_masa_c,
