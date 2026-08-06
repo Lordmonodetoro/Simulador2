@@ -130,12 +130,10 @@ class PlantaAzucareraCompleta:
         lechada_preencalado = flujo_lechada_total * (9.47 / 39.47)
         lechada_encalado_frio = flujo_lechada_total * (30.00 / 39.47)
 
-        # 1ª Carbonatación
         alc_1ra_caida = max(0.0, c['OP_1raCarb_AlcalinidadEntrada_gh'] - c['OP_1raCarb_AlcalinidadSalida'])
         co2_1 = (flujo_jugo_entrada * alc_1ra_caida * (44.0/56.0)) / 1000.0
         caco3_1ra = (flujo_jugo_entrada * alc_1ra_caida / 1000.0) * (100.0/56.0)
 
-        # 2ª Carbonatación (Cálculo de co2_2 y cao_reaccionado_2da corregido aquí)
         alc_2da_caida = max(0.0, c['OP_1raCarb_AlcalinidadSalida'] - c['OP_2daCarb_AlcalinidadSalida'])
         cao_reaccionado_2da = (flujo_jugo_entrada * alc_2da_caida) / 1000.0
         caco3_2da = cao_reaccionado_2da * (100.0 / 56.0)
@@ -166,7 +164,7 @@ class PlantaAzucareraCompleta:
         evap_agua_1ra = (flujo_etapa_2 * cp_jugo * c['OP_Enfriamiento_1raCarb_C']) / 540.0
         vap_5_1ra_th = 0.29 * f_escala
         t_out_1ra_carb = c['OP_Calent_7_TempSalida_C'] - c['OP_Enfriamiento_1raCarb_C']
-        flujo_etapa_3 = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
+        flujo_1ra_carb = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
 
         ms_jugo_ent = flujo_jugo_entrada * (brix_entrada / 100.0)
         impurezas_removidas = ms_jugo_ent * (1 - pureza_base/100.0) * 0.30
@@ -193,7 +191,7 @@ class PlantaAzucareraCompleta:
 
         out.update({
             'OUT_Depuracion_CaO_Activo_th': t_CaO_total,
-            'OUT_1raCarb_Salida_th': flujo_etapa_3,
+            'OUT_1raCarb_Salida_th': flujo_1ra_carb,
             'OUT_2daCarb_Salida_th': flujo_etapa_5,
             'OUT_JugoFino_Total_th': flujo_jugo_fino_total,
             'OUT_JugoFino_Brix_pct': (ms_jugo_ent + azucar_corefin) / flujo_jugo_fino_total * 100.0 if flujo_jugo_fino_total > 0 else 0,
