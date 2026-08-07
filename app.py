@@ -537,30 +537,35 @@ class PlantaAzucareraCompleta:
         })
         return out
 
-    def simular(self):
+def simular(self):
         m1 = self.mod_1_difusiones()
         m2 = self.mod_2_calentamiento_crudo(m1)
-        m8_init = {}
-        m3_init = self.mod_3_depuracion(m1, m2, m8_init)
-        m4_init = self.mod_4_calentamiento_jugo_fino(m3_init)
         
-        m7_pre = self.mod_7_refundicion({}, m3_init, {})
-        m6_init = self.mod_6_casa_cocimiento(m1, m7_pre)
-        m7_init = self.mod_7_refundicion({}, m3_init, m6_init)
+        # 1. Inicializamos diccionarios vacíos para arrancar la planta "en frío"
+        m3, m4, m5, m6, m7, m8 = {}, {}, {}, {}, {}, {}
         
-        m5_init = self.mod_5_evaporacion(m4_init, m3_init, m6_init, m7_init, m1, m2)
-        m8_init = self.mod_8_condensados_agua(m5_init, m6_init, m4_init, m3_init, m1, m2, m7_init)
-        
-        m3 = self.mod_3_depuracion(m1, m2, m8_init)
-        m4 = self.mod_4_calentamiento_jugo_fino(m3)
-        m7_pre_2 = self.mod_7_refundicion(m5_init, m3, m6_init)
-        m6 = self.mod_6_casa_cocimiento(m1, m7_pre_2)
-        
-        m7 = self.mod_7_refundicion(m5_init, m3, m6)
-        m5 = self.mod_5_evaporacion(m4, m3, m6, m7, m1, m2)
-        m8 = self.mod_8_condensados_agua(m5, m6, m4, m3, m1, m2, m7)
+        # 2. Bucle de Convergencia (6 iteraciones estabilizan las recirculaciones al 100%)
+        for iteracion in range(6):
+            m3 = self.mod_3_depuracion(m1, m2, m8)
+            m4 = self.mod_4_calentamiento_jugo_fino(m3)
+            
+            # Se calcula la refundición con lo que haya de jarabe (m5) y azúcar B (m6)
+            m7 = self.mod_7_refundicion(m5, m3, m6)
+            
+            # Cocimiento cristaliza basándose en el nuevo Licor Estándar (m7)
+            m6 = self.mod_6_casa_cocimiento(m1, m7)
+            
+            # Recalculamos la refundición al instante ahora que tenemos el Azúcar B real
+            m7 = self.mod_7_refundicion(m5, m3, m6)
+            
+            # Evaporación y Condensados se actualizan con las sangrías correctas
+            m5 = self.mod_5_evaporacion(m4, m3, m6, m7, m1, m2)
+            m8 = self.mod_8_condensados_agua(m5, m6, m4, m3, m1, m2, m7)
+            
+        # 3. Tras estabilizar la fábrica, ejecutamos Energía (M9) que recopila todo
         m9 = self.mod_9_energia(m1, m4, m5, m6)
         
+        # 4. Redondeo final para la interfaz gráfica
         for modulo in [m1, m2, m3, m4, m5, m6, m7, m8, m9]:
             for k, v in modulo.items():
                 if isinstance(v, (int, float, np.floating)):
