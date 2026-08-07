@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from scipy.optimize import fsolve
+import io
 
 # ====================================================================
 # CONFIGURACIÓN DE PÁGINA STREAMLIT
@@ -746,20 +747,108 @@ with tabs[5]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')
 with tabs[6]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')
 with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
 with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
+
+# ====================================================================
+# REPORTE MAESTRO ESTRUCTURADO POR BLOQUES TÉCNICOS
+# ====================================================================
 with tabs[9]:
-    st.subheader("📄 Reporte Consolidado Íntegro (Auditoría Total)")
-    reporte_global = ""
-    for m_key in ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9']:
-        reporte_global += f"========================================================================\n"
-        reporte_global += f" REPORTE MÓDULO: {m_key}\n"
-        reporte_global += f"========================================================================\n"
-        for k, v in resultados[m_key].items():
-            if isinstance(v, dict):
-                reporte_global += f"  • {k}:\n"
-                for sub_k, sub_v in v.items():
-                    reporte_global += f"      - {sub_k:<30}: {sub_v}\n"
-            else:
-                reporte_global += f"  • {k:<55}: {v}\n"
-        reporte_global += "\n"
-    st.text_area("Copia el reporte completo de la planta para análisis", reporte_global, height=600)
-    st.download_button("Descargar Reporte (.txt)", data=reporte_global, file_name="Reporte_Auditoria_Gemelo_Digital.txt", mime="text/plain")
+    st.subheader("📄 Reporte Maestro de Ingeniería por Módulos")
+    st.markdown("Auditoría técnica detallada clasificada por **Proceso, Laboratorio, Energía y Otros**, con opción de descarga integral en Excel.")
+
+    # Botón de Descarga Excel (.xlsx) profesional
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        for m_key, m_data in resultados.items():
+            flat_data = {k: v for k, v in m_data.items() if not isinstance(v, dict)}
+            df_mod = pd.DataFrame(list(flat_data.items()), columns=['Parámetro del Proceso', 'Valor Calculado'])
+            df_mod.to_excel(writer, sheet_name=m_key, index=False)
+    
+    excel_data = output.getvalue()
+    st.download_button(
+        label="📥 Descargar Reporte Completo en Excel (.xlsx)",
+        data=excel_data,
+        file_name="Gemelo_Digital_ACOR_Reporte_Maestro.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    st.markdown("---")
+
+    # Función inteligente para clasificar las variables en los 4 bloques solicitados
+    def clasificar_variable(key_name):
+        k_lower = key_name.lower()
+        # 2. Datos de laboratorio (Brix, pureza, etc.)
+        if any(w in k_lower for w in ['brix', 'pureza', 'pol_', 'riq']):
+            return 'Laboratorio'
+        # 3. Datos de energía (Vapor, condensado, temp, calores)
+        elif any(w in k_lower for w in ['vapor', 'temp', 'calor', 'condensado', 'energia', 'gas', 'potencia', 'mw']):
+            return 'Energía'
+        # 1. Datos de proceso (Caudales, flujos, masas, producciones principales)
+        elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'barros']):
+            return 'Proceso'
+        # 4. Otros
+        else:
+            return 'Otros'
+
+    # Recorremos cada módulo y lo seccionamos visualmente en expanders
+    nombres_modulos = {
+        'M1': 'Módulo 1: Difusiones y Prensas',
+        'M2': 'Módulo 2: Calentamiento de Jugo Crudo',
+        'M3': 'Módulo 3: Depuración y Carbonataciones',
+        'M4': 'Módulo 4: Thin Juice Heating',
+        'M5': 'Módulo 5: Estación de Evaporación',
+        'M6': 'Módulo 6: Cocimiento y Cristalización',
+        'M7': 'Módulo 7: Refundición / Melter House',
+        'M8': 'Módulo 8: Circuito de Condensados y Agua',
+        'M9': 'Módulo 9: Secadero de Pulpa y Energía'
+    }
+
+    for m_key, m_titulo in nombres_modulos.items():
+        if m_key not in resultados:
+            continue
+            
+        with st.expander(f"🔹 {m_titulo}", expanded=False):
+            # Diccionario para agrupar
+            bloques = {'Proceso': {}, 'Laboratorio': {}, 'Energía': {}, 'Otros': {}}
+            
+            for k, v in resultados[m_key].items():
+                if isinstance(v, dict):
+                    # Si hay diccionarios internos (como catálogos desglosados)
+                    for sub_k, sub_v in v.items():
+                        cat = clasificar_variable(sub_k)
+                        bloques[cat][f"{k} -> {sub_k}"] = sub_v
+                else:
+                    cat = clasificar_variable(k)
+                    bloques[cat][k] = v
+
+            # Estructura visual en 4 columnas (una por cada bloque) o sub-pestañas internas
+            b_col1, b_col2 = st.columns(2)
+            
+            with b_col1:
+                st.markdown("##### 🧪 1. Datos de Proceso")
+                if bloques['Proceso']:
+                    df_proc = pd.DataFrame(list(bloques['Proceso'].items()), columns=['Parámetro', 'Valor'])
+                    st.dataframe(df_proc, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Sin registros de proceso directos.")
+
+                st.markdown("##### 🔬 2. Datos de Laboratorio")
+                if bloques['Laboratorio']:
+                    df_lab = pd.DataFrame(list(bloques['Laboratorio'].items()), columns=['Parámetro', 'Valor'])
+                    st.dataframe(df_lab, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Sin registros de laboratorio directos.")
+
+            with b_col2:
+                st.markdown("##### 🔥 3. Datos de Energía / Térmicos")
+                if bloques['Energía']:
+                    df_ene = pd.DataFrame(list(bloques['Energía'].items()), columns=['Parámetro', 'Valor'])
+                    st.dataframe(df_ene, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Sin registros de energía directos.")
+
+                st.markdown("##### 📦 4. Otros / Parámetros Operativos")
+                if bloques['Otros']:
+                    df_otr = pd.DataFrame(list(bloques['Otros'].items()), columns=['Parámetro', 'Valor'])
+                    st.dataframe(df_otr, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Sin registros adicionales.")
