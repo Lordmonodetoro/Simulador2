@@ -526,7 +526,7 @@ class PlantaAzucareraCompleta:
 
         return out
 
-    def mod_8_condensados_agua(self, m5, m6, m4, m3, m1, m2, m7):
+   def mod_8_condensados_agua(self, m5, m6, m4, m3, m1, m2, m7):
         out = {}
         c = self.config
         recalentador_15_vapor_th = float(m7.get('OUT_Calentador15_VaporConsumo_th', 0.48))
@@ -546,7 +546,8 @@ class PlantaAzucareraCompleta:
             {'nombre': 'Agua Prensa Difusión Nº 17 (M1)', 'flujo_th': float(m1.get('OUT_Calentador17_Vapor_th', 3.04))},
         ]
         total_9635 = sum(item['flujo_th'] for item in fuentes_9635)
-        flash_9635 = total_9635 * 0.02
+        # Ajuste de pérdidas Flash (del 0.02 al 0.045 para reflejar mayor temperatura)
+        flash_9635 = total_9635 * 0.045
         neto_liquido_9635 = total_9635 - flash_9635
 
         scrubber_th = float(m1.get('OUT_CanaProcesada_th', 445.0)) * (12.0 / 445.0)
@@ -561,7 +562,8 @@ class PlantaAzucareraCompleta:
             {'nombre': 'Int. 20 (M1)', 'flujo_th': float(m1.get('OUT_Calentador20_Vapor_th', 1.83))}
         ]
         total_9620 = sum(item['flujo_th'] for item in fuentes_9620)
-        flash_9620 = total_9620 * 0.05
+        # Ajuste de pérdidas Flash (del 0.05 al 0.09)
+        flash_9620 = total_9620 * 0.09
         neto_liquido_9620 = total_9620 - flash_9620
 
         flujo_total_4605 = neto_liquido_9620 + intercambiador_3b_2080_1
