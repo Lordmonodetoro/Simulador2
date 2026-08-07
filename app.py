@@ -43,15 +43,97 @@ LISTA_VAPORES = list(CATALOGO_VAPORES.keys())
 # ====================================================================
 class PlantaAzucareraCompleta:
     def __init__(self, config=None):
-        self.config = config if config else {}
+        # DICCIONARIO MAESTRO RESTAURADO: Evita el KeyError
+        self.config = {
+            'Molienda t/h': 550.00,
+            'Riqueza_Remolacha': 17.40,
+            'Pureza_Agricola': 90.40,
+            'Marco_Remolacha': 4.50,
+            'Draft': 1.11,
+            'MS_PulpaPrensada': 27.50,
+            'Tª_Jugo_Verde': 26.00,
+            '% Ratio_Agua_Aporte': 24.93,
+            'OP_DifPren_Mezcla_AguaCaliente_pct': 80.00,
+            'OP_DifPren_Ratio_AguaPrensas_pct': 37.04,
+            'OP_DifPren_Ratio_Recirculacion_pct': 165.00,
+            'OP_DifPren_Ratio_Desespumador_pct': 46.00,
+            'Intercambiador 17_Tª Entrada_C': 62.00,
+            'OP_DifPren_Int17_Tª Salida_C': 72.00,
+            'OP_DifPren_Int18_19_TempIn_C': 71.40,
+            'OP_DifPren_Int18_19_TempOut_C': 73.30,
+            'OP_DifPren_Int20_TempIn_C': 71.40,
+            'OP_DifPren_Int20_TempOut_C': 76.50,
+            'OP_DifPren_Int17_FuenteVapor': 'Vapor_5toEfecto',
+            'OP_DifPren_Int18_19_FuenteVapor': 'Vapor_V5_A609',
+            'OP_DifPren_Int20_FuenteVapor': 'Vapor_V5_A609',
+            'OP_Cal_Verde_Int00_TempOut_C': 47.40,
+            'OP_Cal_Verde_Int0_TempOut_C': 48.80,
+            'OP_Cal_Verde_Int1_TempOut_C': 49.10,
+            'OP_Cal_Verde_Int2_TempOut_C': 49.10,
+            'OP_Cal_Verde_Int3_TempOut_C': 53.80,
+            'OP_Cal_Verde_Int3a_TempOut_C': 59.00,
+            'OP_Cal_Verde_Int00_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int0_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int1_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int2_FuenteVapor': 'Vapor_Tachas_57C',
+            'OP_Cal_Verde_Int3_FuenteVapor': 'Vapor_V6_94C',
+            'OP_Cal_Verde_Int3a_FuenteVapor': 'Condensado_A609_Sensible',
+            'OP_Depuracion_CaO_pct_remolacha': 1.28,
+            'OP_AzucarCorefin_th': 8.80,
+            'OP_1raCarb_AlcalinidadEntrada_gh': 2.50,
+            'OP_1raCarb_AlcalinidadSalida': 0.90,
+            'OP_2daCarb_AlcalinidadSalida': 0.27,
+            'OP_PKF_MS_Barros_pct': 64.90,
+            'OP_Calent_3B_TempEntrada_C': 61.40,
+            'OP_Calent_3B_TempSalida_C': 65.50,
+            'OP_Calent_4_TempSalida_C': 82.30,
+            'OP_Calent_56_TempSalida_C': 87.80,
+            'OP_Calent_7_TempSalida_C': 87.80,
+            'OP_Enfriamiento_1raCarb_C': 1.60,
+            'OP_Enfriamiento_1raFiltracion_C': 1.00,
+            'OP_Enfriamiento_2daCarb_C': 4.70,
+            'OP_Calent_No8_TempSalida_C': 86.20,
+            'OP_Calent_No9_TempSalida_C': 92.00,
+            'OP_CalorEspecifico_Jugo_kWh_tC': 1.069,
+            'OP_JugoFino_DestinoMelting_pct': 0.00,
+            'OP_Vapor_Calentador_3B': 'Condensados_Evaporacion',
+            'OP_Vapor_Calentador_4': 'Vapor_6toEfecto',
+            'OP_Vapor_Calentador_56': 'Vapor_5toEfecto',
+            'OP_Vapor_Calentador_7': 'Vapor_4toEfecto',
+            'OP_Vapor_Calentador_No8': 'Vapor_5toEfecto',
+            'OP_Vapor_Calentador_No9': 'Vapor_3erEfecto',
+            'OP_Calentador10_TempSalida_C': 117.30,
+            'OP_Calentador11_12_TempSalida_C': 121.60,
+            'OP_Calentador13_TempSalida_C': 123.80,
+            'OP_Calentador14_TempSalida_C': 123.80,
+            'OP_CalorEspecifico_JugoFino_kWh_tC': 1.069,
+            'OP_Vapor_Calentador10': 'Vapor_3erEfecto',
+            'OP_Vapor_Calentador11_12': 'Vapor_2doEfecto',
+            'OP_Vapor_Calentador13': 'Vapor_1erEfecto',
+            'OP_Vapor_Calentador14': 'Vapor_Escape',
+            'OP_Evaporacion_BrixSalida_objetivo_pct': 69.40,
+            'OP_Cocimiento_RendimientoA_pct': 50.00,
+            'OP_Cocimiento_RendimientoB_pct': 47.00,
+            'OP_Cocimiento_RendimientoC_pct': 36.80,
+            'OP_Cocimiento_BrixMasaA_pct': 91.00,
+            'OP_Cocimiento_BrixMasaB_pct': 94.60,
+            'OP_Cocimiento_BrixMasaC_pct': 95.30,
+            'OP_Calentador15_Vapor_Fuente': 'Vapor_4toEfecto',
+            'OP_Pulpa_HumedadPellet_pct': 10.00,
+            'OP_SecaderoPulpa_PCI_Gas_kWh_m3': 10.50,
+            'OP_SecaderoPulpa_RendimientoTérmico_pct': 85.00,
+            'OP_Turbina_ConsumoEspecifico_kWh_tVapor': 45.00
+        }
+        if config:
+            self.config.update(config)
 
     def simular(self):
         cfg = self.config
         cat_vap = CATALOGO_VAPORES
         res = {}
-
+        
         molienda = cfg['Molienda t/h']
-        f_escala = molienda / 445.0
+        f_escala = molienda / 550.0
 
         # =========================================================
         # MÓDULO 1: DIFUSIÓN Y PRENSAS
@@ -70,15 +152,15 @@ class PlantaAzucareraCompleta:
         f_recirc = molienda * (cfg['OP_DifPren_Ratio_Recirculacion_pct']/100.0)
         f_desesp = molienda * (cfg['OP_DifPren_Ratio_Desespumador_pct']/100.0)
 
-        dt_17 = cfg['OP_DifPren_Int17_Tª Salida_C'] - cfg['Intercambiador 17_Tª Entrada_C']
+        dt_17 = max(0.0, cfg['OP_DifPren_Int17_Tª Salida_C'] - cfg['Intercambiador 17_Tª Entrada_C'])
         fuente_17 = cfg['OP_DifPren_Int17_FuenteVapor']
         demanda_v17 = (f_agua_pren * 4.05 * dt_17) / cat_vap[fuente_17]['entalpia']
 
-        dt_18_19 = cfg['OP_DifPren_Int18_19_TempOut_C'] - cfg['OP_DifPren_Int18_19_TempIn_C']
+        dt_18_19 = max(0.0, cfg['OP_DifPren_Int18_19_TempOut_C'] - cfg['OP_DifPren_Int18_19_TempIn_C'])
         fuente_18_19 = cfg['OP_DifPren_Int18_19_FuenteVapor']
         demanda_v18_19 = (f_recirc * 3.95 * dt_18_19) / cat_vap[fuente_18_19]['entalpia']
 
-        dt_20 = cfg['OP_DifPren_Int20_TempOut_C'] - cfg['OP_DifPren_Int20_TempIn_C']
+        dt_20 = max(0.0, cfg['OP_DifPren_Int20_TempOut_C'] - cfg['OP_DifPren_Int20_TempIn_C'])
         fuente_20 = cfg['OP_DifPren_Int20_FuenteVapor']
         demanda_v20 = (f_desesp * 4.10 * dt_20) / cat_vap[fuente_20]['entalpia']
 
@@ -115,6 +197,7 @@ class PlantaAzucareraCompleta:
         fuente_3a = cfg['OP_Cal_Verde_Int3a_FuenteVapor']
         h_3a = cat_vap.get(fuente_3a, cat_vap['Condensado_A609_Sensible'])['entalpia']
         demanda_liq = (flujo_jugo_verde * cp_jugo_verde * dt_3a) / h_3a
+        
         m2_out['OUT_Cal_Verde_Int3a_DemandaLíquido_th'] = round(demanda_liq, 2)
         m2_out['OUT_Cal_Verde_TempFinal_C'] = round(t_out_3a, 2)
         m2_out['OUT_Cal_Verde_FlujoSalida_th'] = round(flujo_jugo_verde, 2)
@@ -127,7 +210,7 @@ class PlantaAzucareraCompleta:
         # =========================================================
         cp_j = cfg['OP_CalorEspecifico_Jugo_kWh_tC']
         cao_activo = molienda * (cfg['OP_Depuracion_CaO_pct_remolacha'] / 100.0)
-
+        
         # Etapa Preencalado
         lodos_2do = 27.17 * f_escala
         lechada_tot = cao_activo + (33.77 * f_escala)
@@ -139,7 +222,7 @@ class PlantaAzucareraCompleta:
         azucar_corefin = cfg['OP_AzucarCorefin_th'] * f_escala
         flujo_post_pre = flujo_pre + azucar_corefin
         ms_post_pre = ms_pre + (azucar_corefin * 0.998)
-
+        
         flujo_enc_frio = flujo_post_pre + (lechada_tot * (30.00/39.47))
         ms_frio = ms_post_pre + (cao_activo * 0.5)
         brix_frio = (ms_frio / flujo_enc_frio) * 100.0
@@ -174,7 +257,7 @@ class PlantaAzucareraCompleta:
         filtrato_pkf = 15.90 * f_escala
         barros_pkf = 17.70 * f_escala
         agua_lavado_filtros = 11.47 * f_escala
-
+        
         azucar_baja = 0.54 * f_escala
         perdidas_indef = 0.70 * f_escala
         flujo_turbio_hacia_8 = flujo_jugo_claro + filtrato_pkf + azucar_baja - perdidas_indef
@@ -189,7 +272,7 @@ class PlantaAzucareraCompleta:
         t_out_2da = t_out_no9 - cfg['OP_Enfriamiento_2daCarb_C']
         flujo_react_2da = flujo_turbio_hacia_8 + co2_2 - evap_2
 
-        # 2da Filtración
+        # 2da Filtración (Eliminación lodos 2do)
         flujo_jugo_fino_total = flujo_react_2da - lodos_2do
         brix_fino = 18.40
         pur_fino = 91.60
@@ -335,11 +418,12 @@ class PlantaAzucareraCompleta:
         res['M7_temp'] = {'_vap_15': vap_15, '_f_15': f_15}
 
         # =========================================================
-        # MÓDULO 5: EVAPORACIÓN
+        # MÓDULO 5: EVAPORACIÓN (Cálculo exacto de Efectos y Flash)
         # =========================================================
         f_in_m5 = res['M4']['OUT_JugoFinoCalentado_Flujo_th']
         bx_in_m5 = res['M4']['OUT_JugoFinoCalentado_Brix_pct']
         t_in_m5 = res['M4']['OUT_JugoFinoCalentado_Temp_C']
+        pur_in_m5 = res['M4']['OUT_JugoFinoCalentado_Pureza_pct']
 
         ms_m5 = f_in_m5 * (bx_in_m5 / 100.0)
         bx_obj = cfg['OP_Evaporacion_BrixSalida_objetivo_pct']
@@ -353,11 +437,8 @@ class PlantaAzucareraCompleta:
         t_jugo = [131.6, 127.3, 122.2, 116.5, 110.8, 99.5]
         t_vap = [131.0, 126.4, 120.2, 112.4, 106.5, 94.0]
         v_names = ['Vapor_1erEfecto', 'Vapor_2doEfecto', 'Vapor_3erEfecto', 'Vapor_4toEfecto', 'Vapor_5toEfecto', 'Vapor_6toEfecto']
-
-        flujo_j_act = f_in_m5
+        
         detalles_ef = {}
-        oferta_vaps = {}
-        oferta_flash = {}
         oferta_tot = {}
         demandas = {v: 0.0 for v in v_names}
         detalles_consumo = {v: [] for v in v_names}
@@ -392,25 +473,28 @@ class PlantaAzucareraCompleta:
         asignar_demanda('Vapor_2doEfecto', 3.0, "Inyecciones y Calentamiento en Casa de Cocimiento (M6)")
         asignar_demanda(f_15, vap_15, "Recalentador Nº15 / Melter (M7)")
 
+        fj_act = f_in_m5
         for i in range(6):
             e_gen = evap_base[i] * esc_evap
             f_gen = flash_base[i] * esc_evap
             t_gen = e_gen + f_gen
-            flujo_j_act -= e_gen
-            bx_act = (ms_m5 / flujo_j_act) * 100.0
+            fj_act -= e_gen
+            bx_act = (ms_m5 / fj_act) * 100.0
             v_n = v_names[i]
             oferta_tot[v_n] = t_gen
 
             consumos = detalles_consumo[v_n]
             tot_cons = demandas[v_n]
             rem = t_gen - tot_cons
-            if rem > 0 and i < 5: consumos.append((f"{i+2}º efecto ", round(rem, 2)))
-
-            dest = "Tanque_Condensados_Evaporacion_9635 (via Balones Flash)" if i > 0 else "Depósito_Alimentación_Calderas_4056 (100%)"
+            if rem > 0:
+                if i < 5:
+                    consumos.append((f"{i+2}º efecto ", round(rem, 2)))
+            
+            dest = "Tanque_Condensados_Evaporacion_9635" if i > 0 else "Depósito_Alimentación_Calderas_4056"
             if i == 1: dest = "Mixto: Parcial a Depósito 4056 y Parcial a Tanque 9635"
 
             detalles_ef[f'Efecto_{i+1}'] = {
-                'nombre': v_n, 'f_jugo': flujo_j_act, 'bx_jugo': bx_act, 't_jugo': t_jugo[i],
+                'nombre': v_n, 'f_jugo': fj_act, 'bx_jugo': bx_act, 't_jugo': t_jugo[i],
                 'e_gen': e_gen, 'f_gen': f_gen, 't_gen': t_gen, 't_vap': t_vap[i],
                 'consumos': consumos, 'dest': dest, 'tot_cons': tot_cons, 'rem': rem
             }
@@ -428,14 +512,14 @@ class PlantaAzucareraCompleta:
         }
 
         # =========================================================
-        # MÓDULO 7: CONDENSADOS Y ACOR
+        # MÓDULO 7: CONDENSADOS Y ACOR (Reparto exacto)
         # =========================================================
         total_9635 = cond_9635 + vap_10 + vap_11_12 + vap_13 + vap_no9 + vap_4 + vap_56 + vap_no8 + demanda_v17
         flash_9635 = 6.00 * f_escala
         neto_9635 = total_9635 - flash_9635
 
-        scrubber = 12.00 * f_escala
         agua_pkf = res['M3']['_pkf_agua']
+        scrubber = 12.00 * f_escala
         int_3b_9635 = neto_9635 * 0.959
 
         total_9620 = vap_tacha_b + vap_tacha_a + vap_tacha_c + vap_15 + (1.78*f_escala) + demanda_v18_19 + demanda_v20
@@ -472,7 +556,7 @@ class PlantaAzucareraCompleta:
         # =========================================================
         # FORMATOS TEXTUALES EXACTOS (Ejemplos 1, 2 y 3)
         # =========================================================
-
+        
         # --- REPORTE M5 ---
         txt_m5 = "========================================================================================================================\n"
         txt_m5 += "  REPORTE DE EVAPORACIÓN Y BALANCE TÉRMICO - MÓDULO 5 (CONECTADO A M3, M4, M6 y M7)\n"
@@ -514,7 +598,7 @@ class PlantaAzucareraCompleta:
         m6 = res['M6']
         txt_m6 += "  [ETAPA 0] DEPÓSITO 5050 (MEZCLA LICOR + MIEL RICA A)\n"
         txt_m6 += f"     • Mezcla Resultante: {m6['_flujo_5050']:.2f} t/h  |  Brix: {m6['_brix_5050']:.2f}% DS  |  Pureza: {m6['_pur_5050']:.2f}% Pur  |  Tª: 88.9 ºC\n\n"
-
+        
         txt_m6 += "  [ETAPA 1] CRISTALIZACIÓN A (A-Pans)\n"
         txt_m6 += f"     • [ENTRADAS] Licor Estándar  : {m6['_flujo_liq']:.2f} t/h  |  Brix: 73.90% DS  |  Pureza: 93.50% Pur  |  Tª: 89.7 ºC\n"
         txt_m6 += f"     • [ENTRADAS] Agua Caliente    :   0.00 t/h  |  Brix:  0.00% DS  |  Pureza:  0.00% Pur  |  Tª: 85.0 ºC\n"
@@ -743,8 +827,9 @@ config_usuario = {
     'OP_Vapor_Calentador13': f_v13,
     'OP_Vapor_Calentador14': f_v14,
     'OP_Calentador15_Vapor_Fuente': f_v15,
-    # Variables de base para los cálculos que no están en sidebar en este snippet
-    'OP_DifPren_MS_PulpaPrensada_pct': 27.50, 'Tª_Jugo_Verde': 26.00, '% Ratio_Agua_Aporte': 24.93,
+    
+    # Variables de base para los cálculos
+    'MS_PulpaPrensada': 27.50, 'Tª_Jugo_Verde': 26.00, '% Ratio_Agua_Aporte': 24.93,
     'OP_DifPren_Mezcla_AguaCaliente_pct': 80.00, 'OP_DifPren_Ratio_AguaPrensas_pct': 37.04,
     'OP_DifPren_Ratio_Recirculacion_pct': 165.00, 'OP_DifPren_Ratio_Desespumador_pct': 46.00,
     'Intercambiador 17_Tª Entrada_C': 62.00, 'OP_DifPren_Int17_Tª Salida_C': 72.00,
@@ -790,10 +875,10 @@ with tab2: render_tab_data('M2', 'Módulo 2: Calentamiento de Jugo Verde')
 with tab3: render_tab_data('M3', 'Módulo 3: Depuración')
 with tab4: render_tab_data('M4', 'Módulo 4: Thin Juice Heating')
 
-with tab5:
+with tab5: 
     st.text_area("Reporte de Evaporación", resultados['TXT_M5'], height=600)
 
-with tab6:
+with tab6: 
     st.text_area("Reporte de Casa de Cocimiento", resultados['TXT_M6'], height=600)
 
 with tab7:
