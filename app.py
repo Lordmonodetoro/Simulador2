@@ -247,7 +247,7 @@ class PlantaAzucareraCompleta:
         out['OUT_JugoFinoCalentado_Temp_C'] = t_14
         return out
 
-   def mod_6_casa_cocimiento(self, m1, m7):
+    def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
         from scipy.optimize import fsolve
@@ -356,7 +356,8 @@ class PlantaAzucareraCompleta:
         brix_jugo_fino_pct = float(m3.get('OUT_Corriente_JugoFinoTotal_Brix_pct', 18.40))
         pur_jugo_fino_pct = float(m3.get('OUT_Corriente_JugoFinoTotal_Pureza_pct', 91.60))
 
-        flujo_azucar_b_th = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Flujo_th', 35.0))
+        # LECTURA DINÁMICA DEL AZÚCAR B DESDE EL MÓDULO 6
+        flujo_azucar_b_th = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Flujo_th', 32.48))
         pur_azucar_b = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Pureza_pct', 98.7))
 
         flujo_polvo = float(m6.get('OUT_Corriente_AzucarComercial_Flujo_th', 72.5)) * 0.06
