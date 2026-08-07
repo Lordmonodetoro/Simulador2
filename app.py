@@ -107,83 +107,83 @@ class PlantaAzucareraCompleta:
         out = {}
         molienda = float(m1['OUT_CanaProcesada_th'])
         f_escala = molienda / 445.0
+        
         flujo_jugo_entrada = float(m2['OUT_Corriente_JugoCrudoCaliente_Flujo_th'])
         brix_entrada = float(m2['OUT_Corriente_JugoCrudoCaliente_Brix_pct'])
         pureza_entrada = float(m2['OUT_Corriente_JugoCrudoCaliente_Pureza_pct'])
+        
         ms_jugo_crudo = flujo_jugo_entrada * (brix_entrada / 100.0)
         pol_jugo_crudo = ms_jugo_crudo * (pureza_entrada / 100.0)
         cp_jugo = 0.94
-        cp_agua = 1.00
-        lodos_2do = 27.17 * f_escala
+        
+        # 1. ESTEQUIOMETRÍA CORREGIDA (Cal y CO2 reaccionan y precipitan)
         t_CaO_total = molienda * (float(c['OP_Depuracion_CaO_pct_remolacha']) / 100.0)
-        flujo_lechada_total = t_CaO_total / 0.1444
-        lechada_preencalado = flujo_lechada_total * 0.24
-        lechada_encalado_frio = flujo_lechada_total * 0.76
-        alc_1ra_caida = max(0.0, float(c['OP_1raCarb_AlcalinidadEntrada_gh']) - float(c['OP_1raCarb_AlcalinidadSalida']))
-        co2_1 = (flujo_jugo_entrada * alc_1ra_caida * (44.0/56.0)) / 1000.0
-        caco3_1ra = (flujo_jugo_entrada * alc_1ra_caida / 1000.0) * (100.0/56.0)
-        alc_2da_caida = max(0.0, float(c['OP_1raCarb_AlcalinidadSalida']) - float(c['OP_2daCarb_AlcalinidadSalida']))
-        cao_reacc_2da = (flujo_jugo_entrada * alc_2da_caida) / 1000.0
-        co2_2 = cao_reacc_2da * (44.0/56.0)
+        caco3_total = t_CaO_total * (100.0/56.0)
+        co2_total = t_CaO_total * (44.0/56.0)
+        # Agua neta aportada por la preparación de la lechada
+        agua_lechada = t_CaO_total * 2.0 
+        
         azucar_corefin = float(c['OP_AzucarCorefin_th']) * f_escala
         ms_corefin = azucar_corefin
-        pol_corefin = azucar_corefin * 0.992
-        flujo_etapa_1 = flujo_jugo_entrada + lodos_2do + lechada_preencalado
-        flujo_etapa_2 = flujo_etapa_1 + azucar_corefin + lechada_encalado_frio
-        t_in_3b = float(c['OP_Calent_3B_TempEntrada_C'])
+        
+        # Demandas de Calor Térmico (Calentadores 3B, 4, 5+6, 7)
+        flujo_etapa_2 = flujo_jugo_entrada + agua_lechada + t_CaO_total + azucar_corefin
         t_out_3b = float(c['OP_Calent_3B_TempSalida_C'])
-        carga_3b_Mcal = flujo_etapa_2 * cp_jugo * max(0.0, t_out_3b - t_in_3b)
-        caudal_3b_condensados = float(m8.get('OUT_Intercambiador3B_2080_1_Calculado_th', 266.0 * f_escala))
         t_out_4 = float(c['OP_Calent_4_TempSalida_C'])
-        out['OUT_Calentador4_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_4 - t_out_3b)) / self.cat_vap['Vapor_6toEfecto']['entalpia']
         t_out_56 = float(c['OP_Calent_56_TempSalida_C'])
-        out['OUT_Calentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         t_out_7 = float(c['OP_Calent_7_TempSalida_C'])
+        
+        out['OUT_Calentador4_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_4 - t_out_3b)) / self.cat_vap['Vapor_6toEfecto']['entalpia']
+        out['OUT_Calentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         out['OUT_Calentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
-        evap_agua_1ra = 1.75 * f_escala
-        vap_5_1ra_th = 0.29 * f_escala
-        flujo_etapa_3 = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
-        t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
+        
+        # 2. FORMACIÓN DE BARROS Y PURGA DE IMPUREZAS
         impurezas_removidas = ms_jugo_crudo * (1.0 - pureza_entrada/100.0) * 0.30
-        ms_barros_1ro = caco3_1ra + impurezas_removidas
-        barros_1ro = ms_barros_1ro / (float(c['OP_PKF_MS_Barros_pct']) / 100.0)
-        jugo_claro = flujo_etapa_3 - barros_1ro
-        ms_jugo_claro = ms_jugo_crudo + ms_corefin - impurezas_removidas
-        pol_jugo_claro = pol_jugo_crudo + pol_corefin
+        ms_barros_1ro = caco3_total + impurezas_removidas
+        barros_1ro_humedos = ms_barros_1ro / (float(c['OP_PKF_MS_Barros_pct']) / 100.0)
+        
+        t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
+        flujo_claro_aprox = flujo_etapa_2 + co2_total - barros_1ro_humedos
+        
         t_out_no8 = float(c['OP_Calent_No8_TempSalida_C'])
-        out['OUT_Calentador8_Vapor_th'] = (jugo_claro * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-        t_out_1ra_filt = t_out_no8 - float(c['OP_Enfriamiento_1raFiltracion_C'])
-        filtrato_pkf = 15.90 * f_escala
-        ms_filtrato = ms_barros_1ro * 0.05
-        pol_filtrato = ms_filtrato * (pol_jugo_claro / ms_jugo_claro)
+        out['OUT_Calentador8_Vapor_th'] = (flujo_claro_aprox * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
+        
         azucar_baja = 0.54 * f_escala
-        ms_azucar_baja = azucar_baja
-        pol_azucar_baja = azucar_baja * 0.95
         agua_lavado_filtros = 13.73 * f_escala
-        flujo_etapa_4 = jugo_claro + filtrato_pkf + azucar_baja + agua_lavado_filtros
+        evap_agua_1ra = 1.75 * f_escala
+        evap_agua_2da = 0.80 * f_escala
+        vap_5_1ra_th = 0.29 * f_escala
+        
+        t_out_1ra_filt = t_out_no8 - float(c['OP_Enfriamiento_1raFiltracion_C'])
+        flujo_etapa_4 = flujo_claro_aprox + azucar_baja + agua_lavado_filtros
+        
         t_out_no9 = float(c['OP_Calent_No9_TempSalida_C'])
         out['OUT_Calentador9_Vapor_th'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
         t_out_2da_carb = t_out_no9 - float(c['OP_Enfriamiento_2daCarb_C'])
-        evap_agua_2da = 0.80 * f_escala
-        flujo_etapa_5 = flujo_etapa_4 + co2_2 - evap_agua_2da
-        ms_etapa_5 = ms_jugo_claro + ms_filtrato + ms_azucar_baja
-        pol_etapa_5 = pol_jugo_claro + pol_filtrato + pol_azucar_baja
-        flujo_jugo_fino_total = flujo_etapa_5 - lodos_2do
+        
+        # 3. BALANCE DE MASA FINAL EXACTO
+        flujo_jugo_fino_total = (flujo_jugo_entrada + agua_lechada + t_CaO_total + co2_total + 
+                                azucar_corefin + azucar_baja + agua_lavado_filtros + vap_5_1ra_th - 
+                                barros_1ro_humedos - evap_agua_1ra - evap_agua_2da)
+        
+        # 4. BALANCE DE SÓLIDOS FINAL
+        ms_filtrato = ms_barros_1ro * 0.05
+        pol_filtrato = ms_filtrato * 0.90
         perdidas_indef = molienda * 0.0016
+        
+        ms_fino_final = ms_jugo_crudo + ms_corefin + azucar_baja + ms_filtrato - impurezas_removidas - perdidas_indef
+        pol_fino_final = pol_jugo_crudo + (azucar_corefin * 0.992) + (azucar_baja * 0.95) + pol_filtrato - perdidas_indef
+        
+        brix_fino = (ms_fino_final / flujo_jugo_fino_total) * 100.0
+        pureza_fino = (pol_fino_final / ms_fino_final) * 100.0
+        
         flujo_jugo_fino_melting = flujo_jugo_fino_total * (float(c['OP_JugoFino_DestinoMelting_pct']) / 100.0)
-        flujo_jugo_fino_mod4 = max(0.1, flujo_jugo_fino_total - flujo_jugo_fino_melting - perdidas_indef)
-        ms_fino_final = ms_etapa_5 - perdidas_indef
-        pol_fino_final = pol_etapa_5 - perdidas_indef
+        flujo_jugo_fino_mod4 = max(0.1, flujo_jugo_fino_total - flujo_jugo_fino_melting)
+        
         out.update({
-            'OUT_Corriente_Jugo1raCarb_Flujo_th': flujo_etapa_3,
-            'OUT_Corriente_Jugo1raCarb_Brix_pct': ((ms_jugo_crudo + ms_corefin) / flujo_etapa_3) * 100.0,
-            'OUT_Corriente_Jugo1raCarb_Pureza_pct': ((pol_jugo_crudo + pol_corefin) / (ms_jugo_crudo + ms_corefin)) * 100.0,
-            'OUT_Corriente_JugoClaro_Flujo_th': jugo_claro,
-            'OUT_Corriente_JugoClaro_Brix_pct': (ms_jugo_claro / jugo_claro) * 100.0 if jugo_claro > 0 else 0.0,
-            'OUT_Corriente_JugoClaro_Pureza_pct': (pol_jugo_claro / ms_jugo_claro) * 100.0 if ms_jugo_claro > 0 else 0.0,
             'OUT_Corriente_JugoFinoTotal_Flujo_th': flujo_jugo_fino_total,
-            'OUT_Corriente_JugoFinoTotal_Brix_pct': (ms_fino_final / flujo_jugo_fino_total) * 100.0 if flujo_jugo_fino_total > 0 else 18.40,
-            'OUT_Corriente_JugoFinoTotal_Pureza_pct': (pol_fino_final / ms_fino_final) * 100.0 if ms_fino_final > 0 else 91.60,
+            'OUT_Corriente_JugoFinoTotal_Brix_pct': brix_fino,
+            'OUT_Corriente_JugoFinoTotal_Pureza_pct': pureza_fino,
             'OUT_JugoFino_ParaModulo4_Calentamiento_th': flujo_jugo_fino_mod4,
             'OUT_JugoFino_Temp_C': t_out_2da_carb
         })
