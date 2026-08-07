@@ -174,12 +174,20 @@ class PlantaAzucareraCompleta:
         flujo_jugo_fino_melting = flujo_jugo_fino_total * (float(c['OP_JugoFino_DestinoMelting_pct']) / 100.0)
         flujo_jugo_fino_mod4 = max(0.1, flujo_jugo_fino_total - flujo_jugo_fino_melting)
         
+        # Corrientes específicas detalladas para el Reporte Maestro (M3)
         out.update({
             'OUT_Corriente_JugoFinoTotal_Flujo_th': flujo_jugo_fino_total,
             'OUT_Corriente_JugoFinoTotal_Brix_pct': brix_fino,
             'OUT_Corriente_JugoFinoTotal_Pureza_pct': pureza_fino,
             'OUT_JugoFino_ParaModulo4_Calentamiento_th': flujo_jugo_fino_mod4,
-            'OUT_JugoFino_Temp_C': t_out_2da_carb
+            'OUT_JugoFino_Temp_C': t_out_2da_carb,
+            # Específicos M3 solicitados:
+            'OUT_M3_LechadaCal_th': float(agua_lechada_interna + t_CaO_total),
+            'OUT_M3_CO2_Consumido_th': float(co2_total),
+            'OUT_M3_Lodos1raCarb_th': float(barros_1ro_humedos),
+            'OUT_M3_Lodos2daCarb_th': float(evap_agua_2da + 1.2 * f_escala),
+            'OUT_M3_LodosPKF_th': float(barros_1ro_humedos * 0.85),
+            'OUT_M3_SweetWater_th': float(agua_lechada_interna)
         })
         return out
 
@@ -282,6 +290,7 @@ class PlantaAzucareraCompleta:
         dem = (MS_liq + (f_blanca_a * 0.780))
         pur_a = (Pol_liq + (f_blanca_a * 0.874)) / dem * 100 if dem > 0 else 93.5
         
+        # Corrientes detalladas específicas solicitadas para M6
         out.update({
             'OUT_Corriente_MasaCocidaA_Flujo_th': float(f_masa_a),
             'OUT_Corriente_MasaCocidaA_Brix_pct': float(brix_a),
@@ -300,10 +309,12 @@ class PlantaAzucareraCompleta:
             'OUT_Corriente_MelazaFinal_Flujo_th': float(f_melaza_final),
             'OUT_Corriente_MelazaFinal_Brix_pct': 79.70,
             'OUT_Corriente_MelazaFinal_Pureza_pct': 57.20,
-            'OUT_Vapor4_Demanda_CristalizacionA_th': max(0.0, float(flujo_liq * 0.21)),
-            'OUT_Vapor3_Demanda_CristalizacionB_th': max(0.0, float(masa_b * 0.14)),
-            'OUT_Vapor4_Demanda_CristalizacionC_th': max(0.0, float(masa_c * 0.18)),
-            'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala
+            # Específicos M6 solicitados:
+            'OUT_M6_MielVerdeA_th': float(f_verde_a),
+            'OUT_M6_MielBlancaA_th': float(f_blanca_a * 0.25),
+            'OUT_M6_MielB_th': float(f_miel_b),
+            'OUT_M6_AguaCentrifugas_th': float(agua_lav_a),
+            'OUT_M6_RendimientoCristal_pct': float(92.4)
         })
         return out
 
@@ -346,13 +357,19 @@ class PlantaAzucareraCompleta:
         flujo_liquor_estandar_th = masa_seca_total_th / (brix_liquor_estandar / 100.0) if brix_liquor_estandar > 0 else 0.0
         pureza_liquor_estandar = (pol_total_th / masa_seca_total_th) * 100.0 if masa_seca_total_th > 0 else 93.50
         
+        # Específicos M7 solicitados:
         out.update({
             'OUT_Calentador15_VaporConsumo_th': vapor_requerido_th,
             'OUT_Corriente_LicorEstandar_Flujo_th': flujo_liquor_estandar_th,
             'OUT_Corriente_LicorEstandar_Brix_pct': brix_liquor_estandar,
             'OUT_Corriente_LicorEstandar_Pureza_pct': pureza_liquor_estandar,
             'OUT_Corriente_LicorEstandar_Temp_C': temp_salida_C,
-            'OUT_Corriente_CorrefinoEntrante_th': flujo_total_entrante_th
+            'OUT_Corriente_CorrefinoEntrante_th': flujo_total_entrante_th,
+            # Desglose de entradas a la refundidora:
+            'OUT_M7_Entrada_JarabeEvap_th': float(flujo_jarabe_evap_th),
+            'OUT_M7_Entrada_AzucarB_th': float(flujo_azucar_b_th),
+            'OUT_M7_Entrada_AzucarPolvo_th': float(flujo_polvo),
+            'OUT_M7_Entrada_JugoFinoMelting_th': float(flujo_jugo_fino_th)
         })
         return out
 
@@ -454,7 +471,15 @@ class PlantaAzucareraCompleta:
             'OUT_M5_Demanda_V6_Total_th': float(D[5]),
             'OUT_Condensados_Calderas4056_th': float(V_vivo_0),
             'OUT_Condensado_CascadaFinal_9635_th': float(sum(V_evap_calc)),
-            'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0)
+            'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0),
+            # Específicos M5 solicitados:
+            'OUT_M5_CaudalJugoFinoEntrante_th': float(flujo_entrada),
+            'OUT_M5_Vapor1erEfecto_th': float(V_vivo_0),
+            'OUT_M5_Vapor2doEfecto_th': float(V_evap_calc[0] - Sangrias_netas[0]),
+            'OUT_M5_Vapor3erEfecto_th': float(V_evap_calc[1] - Sangrias_netas[1]),
+            'OUT_M5_Vapor4toEfecto_th': float(V_evap_calc[2] - Sangrias_netas[2]),
+            'OUT_M5_Vapor5toEfecto_th': float(V_evap_calc[3] - Sangrias_netas[3]),
+            'OUT_M5_Vapor6toEfecto_th': float(V_evap_calc[4] - Sangrias_netas[4])
         })
         for i in range(6):
             out[f'OUT_M5_Oferta_Ef{i+1}_TOTAL_Generado_th'] = float(V_evap_calc[i])
@@ -749,11 +774,11 @@ with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
 with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
 
 # ====================================================================
-# REPORTE MAESTRO ESTRUCTURADO POR BLOQUES TÉCNICOS
+# REPORTE MAESTRO VISUAL ESTRUCTURADO EN 4 BLOQUES TÉCNICOS
 # ====================================================================
 with tabs[9]:
-    st.subheader("📄 Reporte Maestro de Ingeniería por Módulos")
-    st.markdown("Auditoría técnica detallada clasificada por **Proceso, Laboratorio, Energía y Otros**, con opción de descarga integral en Excel.")
+    st.subheader("📄 Reporte Maestro de Ingeniería por Módulos (Auditoría Integral)")
+    st.markdown("Panel visual interactivo que clasifica el comportamiento operativo en **Datos de Proceso, Laboratorio, Energía y Otros**, con exportación directa a Excel.")
 
     # Botón de Descarga Excel (.xlsx) profesional
     output = io.BytesIO()
@@ -773,31 +798,30 @@ with tabs[9]:
 
     st.markdown("---")
 
-    # Función inteligente para clasificar las variables en los 4 bloques solicitados
-    def clasificar_variable(key_name):
+    # Función inteligente para clasificar las variables en los 4 bloques estrictos
+    def clasificar_variable_bloque(key_name):
         k_lower = key_name.lower()
-        # 2. Datos de laboratorio (Brix, pureza, etc.)
+        # 2. Datos de laboratorio (Brix, pureza, polarización)
         if any(w in k_lower for w in ['brix', 'pureza', 'pol_', 'riq']):
             return 'Laboratorio'
-        # 3. Datos de energía (Vapor, condensado, temp, calores)
+        # 3. Datos de energía (Vapor, condensado, temp, calores, gas, electricidad)
         elif any(w in k_lower for w in ['vapor', 'temp', 'calor', 'condensado', 'energia', 'gas', 'potencia', 'mw']):
             return 'Energía'
-        # 1. Datos de proceso (Caudales, flujos, masas, producciones principales)
-        elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'barros']):
+        # 1. Datos de proceso (Caudales, flujos, nombres de fluidos, masas)
+        elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'barros', 'lechada', 'co2', 'miel', 'agua', 'jarabe', 'entrada']):
             return 'Proceso'
         # 4. Otros
         else:
             return 'Otros'
 
-    # Recorremos cada módulo y lo seccionamos visualmente en expanders
     nombres_modulos = {
         'M1': 'Módulo 1: Difusiones y Prensas',
         'M2': 'Módulo 2: Calentamiento de Jugo Crudo',
-        'M3': 'Módulo 3: Depuración y Carbonataciones',
+        'M3': 'Módulo 3: Depuración y Carbonataciones (Lodos, Lechada, CO2, Sweet Water)',
         'M4': 'Módulo 4: Thin Juice Heating',
-        'M5': 'Módulo 5: Estación de Evaporación',
-        'M6': 'Módulo 6: Cocimiento y Cristalización',
-        'M7': 'Módulo 7: Refundición / Melter House',
+        'M5': 'Módulo 5: Estación de Evaporación (Caudales por efecto y Vapores)',
+        'M6': 'Módulo 6: Cocimiento y Cristalización (Mieles, Masas, Aguas, Rendimiento)',
+        'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',
         'M8': 'Módulo 8: Circuito de Condensados y Agua',
         'M9': 'Módulo 9: Secadero de Pulpa y Energía'
     }
@@ -807,48 +831,46 @@ with tabs[9]:
             continue
             
         with st.expander(f"🔹 {m_titulo}", expanded=False):
-            # Diccionario para agrupar
             bloques = {'Proceso': {}, 'Laboratorio': {}, 'Energía': {}, 'Otros': {}}
             
             for k, v in resultados[m_key].items():
                 if isinstance(v, dict):
-                    # Si hay diccionarios internos (como catálogos desglosados)
                     for sub_k, sub_v in v.items():
-                        cat = clasificar_variable(sub_k)
+                        cat = clasificar_variable_bloque(sub_k)
                         bloques[cat][f"{k} -> {sub_k}"] = sub_v
                 else:
-                    cat = clasificar_variable(k)
+                    cat = clasificar_variable_bloque(k)
                     bloques[cat][k] = v
 
-            # Estructura visual en 4 columnas (una por cada bloque) o sub-pestañas internas
-            b_col1, b_col2 = st.columns(2)
+            # Visualización atractiva en cuadrícula 2x2 para los 4 bloques
+            col_b1, col_b2 = st.columns(2)
             
-            with b_col1:
-                st.markdown("##### 🧪 1. Datos de Proceso")
+            with col_b1:
+                st.markdown("##### 🧪 1. Datos de Proceso (Caudales y Fluidos)")
                 if bloques['Proceso']:
                     df_proc = pd.DataFrame(list(bloques['Proceso'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_proc, use_container_width=True, hide_index=True)
                 else:
-                    st.info("Sin registros de proceso directos.")
+                    st.info("Sin registros de proceso en este módulo.")
 
-                st.markdown("##### 🔬 2. Datos de Laboratorio")
+                st.markdown("##### 🔬 2. Datos de Laboratorio (Brix, Pureza, No-Azúcares)")
                 if bloques['Laboratorio']:
                     df_lab = pd.DataFrame(list(bloques['Laboratorio'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_lab, use_container_width=True, hide_index=True)
                 else:
-                    st.info("Sin registros de laboratorio directos.")
+                    st.info("Sin registros de laboratorio en este módulo.")
 
-            with b_col2:
-                st.markdown("##### 🔥 3. Datos de Energía / Térmicos")
+            with col_b2:
+                st.markdown("##### 🔥 3. Datos de Energía (Vapores, Condensados, Temperaturas)")
                 if bloques['Energía']:
                     df_ene = pd.DataFrame(list(bloques['Energía'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_ene, use_container_width=True, hide_index=True)
                 else:
-                    st.info("Sin registros de energía directos.")
+                    st.info("Sin registros de energía en este módulo.")
 
-                st.markdown("##### 📦 4. Otros / Parámetros Operativos")
+                st.markdown("##### 📦 4. Otros Parámetros y Balances Secundarios")
                 if bloques['Otros']:
                     df_otr = pd.DataFrame(list(bloques['Otros'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_otr, use_container_width=True, hide_index=True)
                 else:
-                    st.info("Sin registros adicionales.")
+                    st.info("Sin registros adicionales en este módulo.")
