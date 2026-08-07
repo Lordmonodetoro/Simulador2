@@ -189,28 +189,41 @@ class PlantaAzucareraCompleta:
         })
         return out
 
-    def mod_4_calentamiento_jugo_fino(self, m3):
+def mod_4_calentamiento_jugo_fino(self, m3):
         c = self.config
         out = {}
         cp_jugo = 0.96
+
+        # Lectura de los valores reales que arroja el Módulo 3
         flujo_jugo_fino = float(m3.get('OUT_JugoFino_ParaModulo4_Calentamiento_th', 516.0))
         brix_fino = float(m3.get('OUT_Corriente_JugoFinoTotal_Brix_pct', 18.40))
         pur_fino = float(m3.get('OUT_Corriente_JugoFinoTotal_Pureza_pct', 91.60))
         temp_entrada = float(m3.get('OUT_JugoFino_Temp_C', 87.3))
+
+        # Calentador 10 (Usa Vapor del 3er Efecto)
         t_10 = float(c['OP_Calentador10_TempSalida_C'])
         out['OUT_Calentador10_Vapor_th'] = (flujo_jugo_fino * cp_jugo * max(0.0, t_10 - temp_entrada)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
+
+        # Calentadores 11 y 12 (Usan Vapor del 2do Efecto, se reparte la carga)
         t_11_12 = float(c['OP_Calentador11_12_TempSalida_C'])
         v11_12 = (flujo_jugo_fino * cp_jugo * max(0.0, t_11_12 - t_10)) / self.cat_vap['Vapor_2doEfecto']['entalpia']
         out['OUT_Calentador11_Vapor_th'] = v11_12 * 0.4
         out['OUT_Calentador12_Vapor_th'] = v11_12 * 0.6
+
+        # Calentador 13 (Usa Vapor del 1er Efecto)
         t_13 = float(c['OP_Calentador13_TempSalida_C'])
         out['OUT_Calentador13_Vapor_th'] = (flujo_jugo_fino * cp_jugo * max(0.0, t_13 - t_11_12)) / self.cat_vap['Vapor_1erEfecto']['entalpia']
+
+        # Calentador 14 (Usa Vapor de Escape)
         t_14 = float(c['OP_Calentador14_TempSalida_C'])
         out['OUT_Calentador14_Vapor_th'] = (flujo_jugo_fino * cp_jugo * max(0.0, t_14 - t_13)) / self.cat_vap['Vapor_Escape']['entalpia']
+
+        # Consolidación de la corriente final que entra al Módulo 5 (Evaporación)
         out['OUT_Corriente_JugoFinoCalentado_Flujo_th'] = flujo_jugo_fino
         out['OUT_Corriente_JugoFinoCalentado_Brix_pct'] = brix_fino
         out['OUT_Corriente_JugoFinoCalentado_Pureza_pct'] = pur_fino
         out['OUT_JugoFinoCalentado_Temp_C'] = t_14
+        
         return out
 
     def mod_6_casa_cocimiento(self, m1, m7):
