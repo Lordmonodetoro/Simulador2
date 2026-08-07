@@ -120,7 +120,6 @@ class PlantaAzucareraCompleta:
         caco3_total = t_CaO_total * (100.0/56.0)
         co2_total = t_CaO_total * (44.0/56.0)
         
-        # Correfino independiente de la molienda (valor configurable directo)
         azucar_corefin = float(c['OP_AzucarCorefin_th'])
         azucar_baja = 0.54 * f_escala
         agua_lavado_filtros = 11.47 * f_escala
@@ -636,7 +635,7 @@ with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=
     op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
     op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
-    op_turb_cons = 9.5
+    op_turb_cons = 950.0
 
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
@@ -672,7 +671,8 @@ resultados = planta.simular()
 st.markdown("### 📈 Indicadores Clave de Rendimiento (KPIs)")
 
 v_evap_sobre_rem = resultados['M9'].get('OUT_KPI_VaporEvapSobreRemolacha_pct', 0.0)
-correfino_th = float(config_usuario['OP_AzucarCorefin_th'])
+# Correfino total fijo según el valor configurable de entrada (multiplicado por 24 para T/día)
+correfino_td = float(config_usuario['OP_AzucarCorefin_th']) * 24.0
 az_comercial = resultados['M6'].get('OUT_Corriente_AzucarComercial_Flujo_th', 0.0)
 pot_mw = resultados['M9'].get('OUT_Cogeneracion_PotenciaElectrica_MW', 0.0)
 
@@ -697,8 +697,8 @@ with kpi1:
     st.markdown(render_kpi_card("⚡ Vapor Evap. / Remolacha", f"{v_evap_sobre_rem:.2f}%", "Objetivo < 26.0%", ok_v), unsafe_allow_html=True)
 
 with kpi2:
-    ok_c = correfino_th > 200.0
-    st.markdown(render_kpi_card("🍬 Correfino Total", f"{correfino_th:.2f} t/h", "Objetivo > 200 t/h", ok_c), unsafe_allow_html=True)
+    ok_c = correfino_td > 200.0
+    st.markdown(render_kpi_card("🍬 Correfino Total", f"{correfino_td:.2f} T/día", "Objetivo > 200 T/día", ok_c), unsafe_allow_html=True)
 
 with kpi3:
     ok_az = az_comercial > 70.0
