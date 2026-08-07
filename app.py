@@ -351,10 +351,10 @@ def mod_6_casa_cocimiento(self, m1, m7):
             'OUT_Corriente_MelazaFinal_Pureza_pct': 57.20,
 
           out.update({
-                'OUT_Vapor4_Demanda_CristalizacionA_th': max(0.0, flujo_liq * 0.21),
-                'OUT_Vapor3_Demanda_CristalizacionB_th': max(0.0, masa_b * 0.14),
-                'OUT_Vapor4_Demanda_CristalizacionC_th': max(0.0, masa_c * 0.18),
-                'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala
+            'OUT_Vapor4_Demanda_CristalizacionA_th': max(0.0, flujo_liq * 0.21),
+            'OUT_Vapor3_Demanda_CristalizacionB_th': max(0.0, masa_b * 0.14),
+            'OUT_Vapor4_Demanda_CristalizacionC_th': max(0.0, masa_c * 0.18),
+            'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala
             })
             return out
 
