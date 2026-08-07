@@ -174,14 +174,12 @@ class PlantaAzucareraCompleta:
         flujo_jugo_fino_melting = flujo_jugo_fino_total * (float(c['OP_JugoFino_DestinoMelting_pct']) / 100.0)
         flujo_jugo_fino_mod4 = max(0.1, flujo_jugo_fino_total - flujo_jugo_fino_melting)
         
-        # Corrientes específicas detalladas para el Reporte Maestro (M3)
         out.update({
             'OUT_Corriente_JugoFinoTotal_Flujo_th': flujo_jugo_fino_total,
             'OUT_Corriente_JugoFinoTotal_Brix_pct': brix_fino,
             'OUT_Corriente_JugoFinoTotal_Pureza_pct': pureza_fino,
             'OUT_JugoFino_ParaModulo4_Calentamiento_th': flujo_jugo_fino_mod4,
             'OUT_JugoFino_Temp_C': t_out_2da_carb,
-            # Específicos M3 solicitados:
             'OUT_M3_LechadaCal_th': float(agua_lechada_interna + t_CaO_total),
             'OUT_M3_CO2_Consumido_th': float(co2_total),
             'OUT_M3_Lodos1raCarb_th': float(barros_1ro_humedos),
@@ -290,7 +288,6 @@ class PlantaAzucareraCompleta:
         dem = (MS_liq + (f_blanca_a * 0.780))
         pur_a = (Pol_liq + (f_blanca_a * 0.874)) / dem * 100 if dem > 0 else 93.5
         
-        # Corrientes detalladas específicas solicitadas para M6
         out.update({
             'OUT_Corriente_MasaCocidaA_Flujo_th': float(f_masa_a),
             'OUT_Corriente_MasaCocidaA_Brix_pct': float(brix_a),
@@ -309,7 +306,6 @@ class PlantaAzucareraCompleta:
             'OUT_Corriente_MelazaFinal_Flujo_th': float(f_melaza_final),
             'OUT_Corriente_MelazaFinal_Brix_pct': 79.70,
             'OUT_Corriente_MelazaFinal_Pureza_pct': 57.20,
-            # Específicos M6 solicitados:
             'OUT_M6_MielVerdeA_th': float(f_verde_a),
             'OUT_M6_MielBlancaA_th': float(f_blanca_a * 0.25),
             'OUT_M6_MielB_th': float(f_miel_b),
@@ -357,7 +353,6 @@ class PlantaAzucareraCompleta:
         flujo_liquor_estandar_th = masa_seca_total_th / (brix_liquor_estandar / 100.0) if brix_liquor_estandar > 0 else 0.0
         pureza_liquor_estandar = (pol_total_th / masa_seca_total_th) * 100.0 if masa_seca_total_th > 0 else 93.50
         
-        # Específicos M7 solicitados:
         out.update({
             'OUT_Calentador15_VaporConsumo_th': vapor_requerido_th,
             'OUT_Corriente_LicorEstandar_Flujo_th': flujo_liquor_estandar_th,
@@ -365,7 +360,6 @@ class PlantaAzucareraCompleta:
             'OUT_Corriente_LicorEstandar_Pureza_pct': pureza_liquor_estandar,
             'OUT_Corriente_LicorEstandar_Temp_C': temp_salida_C,
             'OUT_Corriente_CorrefinoEntrante_th': flujo_total_entrante_th,
-            # Desglose de entradas a la refundidora:
             'OUT_M7_Entrada_JarabeEvap_th': float(flujo_jarabe_evap_th),
             'OUT_M7_Entrada_AzucarB_th': float(flujo_azucar_b_th),
             'OUT_M7_Entrada_AzucarPolvo_th': float(flujo_polvo),
@@ -472,7 +466,6 @@ class PlantaAzucareraCompleta:
             'OUT_Condensados_Calderas4056_th': float(V_vivo_0),
             'OUT_Condensado_CascadaFinal_9635_th': float(sum(V_evap_calc)),
             'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0),
-            # Específicos M5 solicitados:
             'OUT_M5_CaudalJugoFinoEntrante_th': float(flujo_entrada),
             'OUT_M5_Vapor1erEfecto_th': float(V_vivo_0),
             'OUT_M5_Vapor2doEfecto_th': float(V_evap_calc[0] - Sangrias_netas[0]),
@@ -715,31 +708,23 @@ def render_kpi_card(label, value, target_text, achieved):
     """
     return html_code
 
-# Primera fila de KPIs (3 columnas)
 kpi1, kpi2, kpi3 = st.columns(3)
-
 with kpi1:
     ok_m = molienda_td > 10000.0
     st.markdown(render_kpi_card("🌱 Molienda Total", f"{molienda_td:,.0f} T/día", "Objetivo > 10.000 t/día", ok_m), unsafe_allow_html=True)
-
 with kpi2:
     ok_v = vap_evap_th < 115.0
     st.markdown(render_kpi_card("⚡ Vapor a Evaporación", f"{vap_evap_th:.2f} t/h", "Objetivo < 115 t/h", ok_v), unsafe_allow_html=True)
-
 with kpi3:
     ok_c = correfino_td > 200.0
     st.markdown(render_kpi_card("🍬 Correfino Total", f"{correfino_td:.2f} T/día", "Objetivo > 200 T/día", ok_c), unsafe_allow_html=True)
 
-# Segunda fila de KPIs (3 columnas)
 kpi4, kpi5, kpi6 = st.columns(3)
-
 with kpi4:
     ok_az = az_comercial > 70.0
     st.markdown(render_kpi_card("📦 Azúcar Comercial", f"{az_comercial:.2f} t/h", "Objetivo > 70 t/h", ok_az), unsafe_allow_html=True)
-
 with kpi5:
     st.markdown(render_kpi_card("🔋 Potencia Eléctrica", f"{pot_mw:.2f} MW", "Cogeneración", True), unsafe_allow_html=True)
-
 with kpi6:
     rend_az = resultados['M9'].get('OUT_KPI_RendimientoAzucar_pct', 0.0)
     ok_r = rend_az > 15.0
@@ -748,9 +733,20 @@ with kpi6:
 st.markdown("---")
 
 # ====================================================================
-# PESTAÑAS DE NAVEGACIÓN POR MÓDULOS
+# PESTAÑAS DE NAVEGACIÓN POR MÓDULOS (M7 ADELANTADO ANTES DE M6)
 # ====================================================================
-tabs = st.tabs(["M1: Difusión", "M2: Cal Crudo", "M3: Depuración", "M4: Jugo Fino", "M5: Evaporación", "M6: Cocimiento", "M7: Refundición", "M8: Condensados", "M9: Energía", "📄 REPORTE MAESTRO"])
+tabs = st.tabs([
+    "M1: Difusión", 
+    "M2: Cal Crudo", 
+    "M3: Depuración", 
+    "M4: Jugo Fino", 
+    "M5: Evaporación", 
+    "M7: Refundición", 
+    "M6: Cocimiento", 
+    "M8: Condensados", 
+    "M9: Energía", 
+    "📄 REPORTE MAESTRO"
+])
 
 def render_modulo_tab(mod_key, titulo):
     st.subheader(f"📊 Salidas del Balance: {titulo}")
@@ -768,8 +764,8 @@ with tabs[1]: render_modulo_tab('M2', 'Módulo 2: Calentamiento de Jugo Crudo')
 with tabs[2]: render_modulo_tab('M3', 'Módulo 3: Depuración y Carbonataciones')
 with tabs[3]: render_modulo_tab('M4', 'Módulo 4: Thin Juice Heating')
 with tabs[4]: render_modulo_tab('M5', 'Módulo 5: Estación de Evaporación')
-with tabs[5]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')
-with tabs[6]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')
+with tabs[5]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')  # Adelantado
+with tabs[6]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')  # Posicionado después
 with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
 with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
 
@@ -780,7 +776,6 @@ with tabs[9]:
     st.subheader("📄 Reporte Maestro de Ingeniería por Módulos (Auditoría Integral)")
     st.markdown("Panel visual interactivo que clasifica el comportamiento operativo en **Datos de Proceso, Laboratorio, Energía y Otros**, con exportación directa a Excel.")
 
-    # Botón de Descarga Excel (.xlsx) profesional
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for m_key, m_data in resultados.items():
@@ -798,30 +793,26 @@ with tabs[9]:
 
     st.markdown("---")
 
-    # Función inteligente para clasificar las variables en los 4 bloques estrictos
     def clasificar_variable_bloque(key_name):
         k_lower = key_name.lower()
-        # 2. Datos de laboratorio (Brix, pureza, polarización)
         if any(w in k_lower for w in ['brix', 'pureza', 'pol_', 'riq']):
             return 'Laboratorio'
-        # 3. Datos de energía (Vapor, condensado, temp, calores, gas, electricidad)
         elif any(w in k_lower for w in ['vapor', 'temp', 'calor', 'condensado', 'energia', 'gas', 'potencia', 'mw']):
             return 'Energía'
-        # 1. Datos de proceso (Caudales, flujos, nombres de fluidos, masas)
         elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'barros', 'lechada', 'co2', 'miel', 'agua', 'jarabe', 'entrada']):
             return 'Proceso'
-        # 4. Otros
         else:
             return 'Otros'
 
+    # Orden del reporte maestro también actualizado (M7 antes de M6)
     nombres_modulos = {
         'M1': 'Módulo 1: Difusiones y Prensas',
         'M2': 'Módulo 2: Calentamiento de Jugo Crudo',
         'M3': 'Módulo 3: Depuración y Carbonataciones (Lodos, Lechada, CO2, Sweet Water)',
         'M4': 'Módulo 4: Thin Juice Heating',
         'M5': 'Módulo 5: Estación de Evaporación (Caudales por efecto y Vapores)',
-        'M6': 'Módulo 6: Cocimiento y Cristalización (Mieles, Masas, Aguas, Rendimiento)',
-        'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',
+        'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',  # Adelantado
+        'M6': 'Módulo 6: Cocimiento y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  # Después
         'M8': 'Módulo 8: Circuito de Condensados y Agua',
         'M9': 'Módulo 9: Secadero de Pulpa y Energía'
     }
@@ -842,7 +833,6 @@ with tabs[9]:
                     cat = clasificar_variable_bloque(k)
                     bloques[cat][k] = v
 
-            # Visualización atractiva en cuadrícula 2x2 para los 4 bloques
             col_b1, col_b2 = st.columns(2)
             
             with col_b1:
