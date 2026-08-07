@@ -297,7 +297,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
         # ==========================================
         # 2. MOTOR MATEMÁTICO: TACHAS B Y C (Cierre Perfecto)
         # ==========================================
-        # Alimentaciones proporcionales a la molienda
         F_in_b = 67.53 * f_escala
         F_in_c = 32.11 * f_escala
 
@@ -322,7 +321,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
         sol_bc = fsolve(modelo_tachas_b_c, est_bc, args=(F_in_b, F_in_c))
         f_az_b, f_miel_b, f_az_c, f_melaza_final = sol_bc
 
-        # Estimaciones de masecadas
         masa_b = F_in_b
         masa_c = F_in_c
 
@@ -330,9 +328,9 @@ def mod_6_casa_cocimiento(self, m1, m7):
         # 3. EMPAQUETADO DE SALIDAS PARA STREAMLIT
         # ==========================================
         out.update({
-            'OUT_Corriente_MasaCocidaA_Flujo_th': flujo_liq,
-            'OUT_Corriente_MasaCocidaA_Brix_pct': brix_a,
-            'OUT_Corriente_MasaCocidaA_Pureza_pct': P_liq,
+            'OUT_Corriente_MasaCocidaA_Flujo_th': float(flujo_liq),
+            'OUT_Corriente_MasaCocidaA_Brix_pct': float(brix_a),
+            'OUT_Corriente_MasaCocidaA_Pureza_pct': float(P_liq),
 
             'OUT_Corriente_AzucarComercial_Flujo_th': float(f_az_comercial),
             'OUT_Corriente_AzucarComercial_Brix_pct': 100.0,
@@ -350,13 +348,12 @@ def mod_6_casa_cocimiento(self, m1, m7):
             'OUT_Corriente_MelazaFinal_Brix_pct': 79.70,
             'OUT_Corriente_MelazaFinal_Pureza_pct': 57.20,
 
-          out.update({
-            'OUT_Vapor4_Demanda_CristalizacionA_th': max(0.0, flujo_liq * 0.21),
-            'OUT_Vapor3_Demanda_CristalizacionB_th': max(0.0, masa_b * 0.14),
-            'OUT_Vapor4_Demanda_CristalizacionC_th': max(0.0, masa_c * 0.18),
+            'OUT_Vapor4_Demanda_CristalizacionA_th': max(0.0, float(flujo_liq * 0.21)),
+            'OUT_Vapor3_Demanda_CristalizacionB_th': max(0.0, float(masa_b * 0.14)),
+            'OUT_Vapor4_Demanda_CristalizacionC_th': max(0.0, float(masa_c * 0.18)),
             'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala
-            })
-            return out
+        })
+        return out
 
     def mod_7_refundicion(self, m5, m3, m6):
         c = self.config
