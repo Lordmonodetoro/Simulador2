@@ -345,7 +345,6 @@ class PlantaAzucareraCompleta:
         flujo_liquor_estandar_th = masa_seca_total_th / (brix_liquor_estandar / 100.0) if brix_liquor_estandar > 0 else 0.0
         pureza_liquor_estandar = (pol_total_th / masa_seca_total_th) * 100.0 if masa_seca_total_th > 0 else 93.50
         
-        # Guardamos también el flujo total entrante de correfino para auditarlo en los KPIs
         out.update({
             'OUT_Calentador15_VaporConsumo_th': vapor_requerido_th,
             'OUT_Corriente_LicorEstandar_Flujo_th': flujo_liquor_estandar_th,
@@ -525,7 +524,6 @@ class PlantaAzucareraCompleta:
         vapor_calderas = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0)) + float(m4.get('OUT_Calentador14_Vapor_th', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
         mw_elec = (vapor_calderas * float(c['OP_Turbina_ConsumoEspecifico_kWh_tVapor'])) / 1000.0
         
-        # Vapor exclusivo que entra a evaporación (Vapor vivo al 1er efecto)
         vapor_evap_th = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0))
         molienda = float(c['IN_Molienda_th'])
         v_sobre_rem_evap = (vapor_evap_th / molienda) * 100.0 if molienda > 0 else 0.0
@@ -668,20 +666,48 @@ planta = PlantaAzucareraCompleta(config_usuario)
 resultados = planta.simular()
 
 # ====================================================================
-# MÉTRICAS KPI SUPERIORES (TARJETAS EJECUTIVAS CON COLORES)
+# MÉTRICAS KPI SUPERIORES (TARJETAS DINÁMICAS CON COLORES VERDE/ROJO)
 # ====================================================================
 st.markdown("### 📈 Indicadores Clave de Rendimiento (KPIs)")
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
 v_evap_sobre_rem = resultados['M9'].get('OUT_KPI_VaporEvapSobreRemolacha_pct', 0.0)
-rend_az = resultados['M9'].get('OUT_KPI_RendimientoAzucar_pct', 0.0)
 correfino_th = resultados['M7'].get('OUT_Corriente_CorrefinoEntrante_th', 0.0)
 pot_mw = resultados['M9'].get('OUT_Cogeneracion_PotenciaElectrica_MW', 0.0)
+rend_az = resultados['M9'].get('OUT_KPI_RendimientoAzucar_pct', 0.0)
 
-kpi1.metric(label="⚡ Vapor Evap. / Remolacha", value=f"{v_evap_sobre_rem:.2f}%", delta="Objetivo < 26%")
-kpi2.metric(label="🍬 Correfino Total", value=f"{correfino_th:.2f} t/h", delta="Objetivo > 200 t/h")
-kpi3.metric(label="🔋 Potencia Eléctrica", value=f"{pot_mw:.2f} MW", delta="Cogeneración")
-kpi4.metric(label="📦 Rendimiento Azúcar", value=f"{rend_az:.2f}%", delta="Comercial")
+# Función HTML para crear tarjetas KPI con color dinámico
+def render_kpi_card(label, value, target_text, achieved):
+    bg_color = "#d4edda" if achieved else "#f8d7da"     # Fondo verde claro / rojo claro
+    text_color = "#155724" if achieved else "#721c24"   # Texto verde oscuro / rojo oscuro
+    border_color = "#c3e6cb" if achieved else "#f5c6cb" # Borde correspondiente
+    
+    html_code = f"""
+    <div style="background-color: {bg_color}; border: 1px solid {border_color}; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 10px;">
+        <span style="color: {text_color}; font-size: 14px; font-weight: bold;">{label}</span>
+        <h2 style="color: {text_color}; margin: 8px 0; font-size: 26px;">{value}</h2>
+        <span style="color: {text_color}; font-size: 12px;">{target_text}</span>
+    </div>
+    """
+    return html_code
+
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+with kpi1:
+    # Condición: Vapor Evap / Remolacha objetivo < 26%
+    ok_v = v_evap_sobre_rem < 26.0
+    st.markdown(render_kpi_card("⚡ Vapor Evap. / Remolacha", f"{v_evap_sobre_rem:.2f}%", "Objetivo < 26.0%", ok_v), unsafe_allow_html=True)
+
+with kpi2:
+    # Condición: Correfino objetivo > 200 t/h
+    ok_c = correfino_th > 200.0
+    st.markdown(render_kpi_card("🍬 Correfino Total", f"{correfino_th:.2f} t/h", "Objetivo > 200 t/h", ok_c), unsafe_allow_html=True)
+
+with kpi3:
+    st.markdown(render_kpi_card("🔋 Potencia Eléctrica", f"{pot_mw:.2f} MW", "Cogeneración", True), unsafe_allow_html=True)
+
+with kpi4:
+    ok_r = rend_az > 15.0
+    st.markdown(render_kpi_card("📦 Rendimiento Azúcar", f"{rend_az:.2f}%", "Comercial", ok_r), unsafe_allow_html=True)
 
 st.markdown("---")
 
