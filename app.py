@@ -39,19 +39,26 @@ class PlantaAzucareraCompleta:
     def mod_1_difusiones(self):
         c = self.config
         out = {}
+
         molienda = float(c['IN_Molienda_th'])
         flujo_jugo = molienda * float(c['OP_DifPren_Ratio_Extraccion'])
+
         fibra_seca_th = molienda * (float(c['IN_Marc_Fibra_pct']) / 100.0)
         pulpa_prensada_th = fibra_seca_th / (float(c['OP_DifPren_MS_PulpaPrensada_pct']) / 100.0)
+
         f_agua_pren = molienda * (float(c['OP_DifPren_Ratio_AguaPrensas_pct']) / 100.0)
         f_recirc = molienda * (float(c['OP_DifPren_Ratio_Recirculacion_pct']) / 100.0)
         f_desesp = molienda * (float(c['OP_DifPren_Ratio_Desespumador_pct']) / 100.0)
+
         dt_17 = max(0.0, float(c['OP_DifPren_Int17_TempOut_C']) - float(c['OP_DifPren_Int17_TempIn_C']))
         vap_17 = (f_agua_pren * 1.0 * dt_17) / self.cat_vap['Vapor_5toEfecto']['entalpia']
+
         dt_18_19 = max(0.0, float(c['OP_DifPren_Int18_19_TempOut_C']) - float(c['OP_DifPren_Int18_19_TempIn_C']))
         vap_18_19 = (f_recirc * 1.0 * dt_18_19) / self.cat_vap['Vapor_5toEfecto']['entalpia']
+
         dt_20 = max(0.0, float(c['OP_DifPren_Int20_TempOut_C']) - float(c['OP_DifPren_Int20_TempIn_C']))
         vap_20 = (f_desesp * 1.0 * dt_20) / self.cat_vap['Vapor_5toEfecto']['entalpia']
+
         out.update({
             'OUT_CanaProcesada_th': molienda,
             'OUT_Corriente_JugoCrudo_Flujo_th': flujo_jugo,
@@ -67,18 +74,29 @@ class PlantaAzucareraCompleta:
     def mod_2_calentamiento_crudo(self, m1):
         c = self.config
         out = {}
+
         flujo_jugo = float(m1['OUT_Corriente_JugoCrudo_Flujo_th'])
         ds_jugo = float(m1['OUT_Corriente_JugoCrudo_Brix_pct'])
         pur_jugo = float(m1['OUT_Corriente_JugoCrudo_Pureza_pct'])
         t_in = float(c['OP_DifPren_Temp_JugoCrudo_C'])
+
         cp_jugo = 1.0 - (0.005 * ds_jugo)
-        rutas_vapor = {'00': 'Vapor_Tachas_57C', '0': 'Vapor_Escape', '1': 'Vapor_Escape', '2': 'Vapor_Escape', '3': 'Vapor_6toEfecto'}
+
+        rutas_vapor = {
+            '00': 'Vapor_Tachas_57C', 
+            '0': 'Vapor_Escape', 
+            '1': 'Vapor_Escape', 
+            '2': 'Vapor_Escape', 
+            '3': 'Vapor_6toEfecto'
+        }
+
         for eq in ['00', '0', '1', '2', '3']:
             t_out = float(c[f'OP_CalCrudo_Int{eq}_TempOut_C'])
             dt = max(0.0, t_out - t_in)
             fuente = rutas_vapor[eq]
             out[f'OUT_Calentador{eq}_Vapor_th'] = (flujo_jugo * cp_jugo * dt) / self.cat_vap[fuente]['entalpia']
             t_in = t_out
+
         out['OUT_Corriente_JugoCrudoCaliente_Flujo_th'] = flujo_jugo
         out['OUT_Corriente_JugoCrudoCaliente_Brix_pct'] = ds_jugo
         out['OUT_Corriente_JugoCrudoCaliente_Pureza_pct'] = pur_jugo
