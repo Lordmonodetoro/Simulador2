@@ -526,7 +526,6 @@ class PlantaAzucareraCompleta:
         
         vapor_evap_th = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0))
         molienda = float(c['IN_Molienda_th'])
-        v_sobre_rem_evap = (vapor_evap_th / molienda) * 100.0 if molienda > 0 else 0.0
 
         out.update({
             'OUT_PelletPulpa_Producido_th': pellet,
@@ -534,7 +533,7 @@ class PlantaAzucareraCompleta:
             'OUT_SecaderoPulpa_GasNatural_m3h': gas_m3h,
             'OUT_Caldera_VaporVivoTotal_th': vapor_calderas,
             'OUT_Cogeneracion_PotenciaElectrica_MW': mw_elec,
-            'OUT_KPI_VaporEvapSobreRemolacha_pct': v_sobre_rem_evap,
+            'OUT_VaporEvap_th': vapor_evap_th,
             'OUT_KPI_RendimientoAzucar_pct': (float(m6.get('OUT_Corriente_AzucarComercial_Flujo_th', 0.0)) / molienda) * 100.0 if molienda > 0 else 0.0
         })
         return out
@@ -647,8 +646,9 @@ config_usuario = {
     'OP_DifPren_Int18_19_TempIn_C': op_int18_tin, 'OP_DifPren_Int18_19_TempOut_C': op_int18_tout,
     'OP_DifPren_Int20_TempIn_C': op_int20_tin, 'OP_DifPren_Int20_TempOut_C': op_int20_tout,
     'OP_CalCrudo_Int00_TempOut_C': op_int00_tout, 'OP_CalCrudo_Int0_TempOut_C': op_int0_tout, 'OP_CalCrudo_Int1_TempOut_C': op_int1_tout,
+    'OP_Calentador15_Vapor_Fuente': 'Vapor_4toEfecto', 'OP_AzucarCorefin_th': op_corefin_th,
     'OP_CalCrudo_Int2_TempOut_C': op_int2_tout, 'OP_CalCrudo_Int3_TempOut_C': op_int3_tout, 'OP_CalCrudo_Int3a_TempOut_C': op_int3a_tout,
-    'OP_Depuracion_CaO_pct_remolacha': op_cao_pct, 'OP_AzucarCorefin_th': op_corefin_th, 'OP_1raCarb_AlcalinidadEntrada_gh': op_alc1_in,
+    'OP_Depuracion_CaO_pct_remolacha': op_cao_pct, 'OP_1raCarb_AlcalinidadEntrada_gh': op_alc1_in,
     'OP_1raCarb_AlcalinidadSalida': op_alc1_out, 'OP_2daCarb_AlcalinidadSalida': op_alc2_out, 'OP_PKF_MS_Barros_pct': op_pkf_ms,
     'OP_Calent_3B_TempEntrada_C': op_c3b_tin, 'OP_Calent_3B_TempSalida_C': op_c3b_tout, 'OP_Calent_4_TempSalida_C': op_c4_tout,
     'OP_Calent_56_TempSalida_C': op_c56_tout, 'OP_Calent_7_TempSalida_C': op_c7_tout, 'OP_Enfriamiento_1raCarb_C': op_enf_1carb,
@@ -657,7 +657,6 @@ config_usuario = {
     'OP_Calentador10_TempSalida_C': op_c10_tout, 'OP_Calentador11_12_TempSalida_C': op_c11_tout, 'OP_Calentador13_TempSalida_C': op_c13_tout, 'OP_Calentador14_TempSalida_C': op_c14_tout,
     'OP_Evaporacion_BrixSalida_objetivo_pct': op_evap_brix_obj,
     'OP_Cocimiento_BrixMasaA_pct': op_brix_masa_a, 'OP_Cocimiento_BrixMasaB_pct': op_brix_masa_b, 'OP_Cocimiento_BrixMasaC_pct': op_brix_masa_c,
-    'OP_Calentador15_Vapor_Fuente': 'Vapor_4toEfecto',
     'OP_Pulpa_HumedadPellet_pct': op_pellet_hum, 'OP_SecaderoPulpa_PCI_Gas_kWh_m3': op_gas_pci, 'OP_SecaderoPulpa_RendimientoTérmico_pct': op_sec_rend,
     'OP_Turbina_ConsumoEspecifico_kWh_tVapor': op_turb_cons
 }
@@ -670,8 +669,8 @@ resultados = planta.simular()
 # ====================================================================
 st.markdown("### 📈 Indicadores Clave de Rendimiento (KPIs)")
 
-v_evap_sobre_rem = resultados['M9'].get('OUT_KPI_VaporEvapSobreRemolacha_pct', 0.0)
-# Correfino total fijo según el valor configurable de entrada (multiplicado por 24 para T/día)
+molienda_td = in_molienda * 24.0
+vap_evap_th = resultados['M9'].get('OUT_VaporEvap_th', 0.0)
 correfino_td = float(config_usuario['OP_AzucarCorefin_th']) * 24.0
 az_comercial = resultados['M6'].get('OUT_Corriente_AzucarComercial_Flujo_th', 0.0)
 pot_mw = resultados['M9'].get('OUT_Cogeneracion_PotenciaElectrica_MW', 0.0)
@@ -690,22 +689,35 @@ def render_kpi_card(label, value, target_text, achieved):
     """
     return html_code
 
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+# Primera fila de KPIs (3 columnas)
+kpi1, kpi2, kpi3 = st.columns(3)
 
 with kpi1:
-    ok_v = v_evap_sobre_rem < 26.0
-    st.markdown(render_kpi_card("⚡ Vapor Evap. / Remolacha", f"{v_evap_sobre_rem:.2f}%", "Objetivo < 26.0%", ok_v), unsafe_allow_html=True)
+    ok_m = molienda_td > 10000.0
+    st.markdown(render_kpi_card("🌱 Molienda Total", f"{molienda_td:,.0f} T/día", "Objetivo > 10.000 t/día", ok_m), unsafe_allow_html=True)
 
 with kpi2:
+    ok_v = vap_evap_th < 115.0
+    st.markdown(render_kpi_card("⚡ Vapor a Evaporación", f"{vap_evap_th:.2f} t/h", "Objetivo < 115 t/h", ok_v), unsafe_allow_html=True)
+
+with kpi3:
     ok_c = correfino_td > 200.0
     st.markdown(render_kpi_card("🍬 Correfino Total", f"{correfino_td:.2f} T/día", "Objetivo > 200 T/día", ok_c), unsafe_allow_html=True)
 
-with kpi3:
+# Segunda fila de KPIs (3 columnas)
+kpi4, kpi5, kpi6 = st.columns(3)
+
+with kpi4:
     ok_az = az_comercial > 70.0
     st.markdown(render_kpi_card("📦 Azúcar Comercial", f"{az_comercial:.2f} t/h", "Objetivo > 70 t/h", ok_az), unsafe_allow_html=True)
 
-with kpi4:
+with kpi5:
     st.markdown(render_kpi_card("🔋 Potencia Eléctrica", f"{pot_mw:.2f} MW", "Cogeneración", True), unsafe_allow_html=True)
+
+with kpi6:
+    rend_az = resultados['M9'].get('OUT_KPI_RendimientoAzucar_pct', 0.0)
+    ok_r = rend_az > 15.0
+    st.markdown(render_kpi_card("📦 Rendimiento Azúcar", f"{rend_az:.2f}%", "Objetivo > 15%", ok_r), unsafe_allow_html=True)
 
 st.markdown("---")
 
