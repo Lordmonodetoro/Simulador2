@@ -153,7 +153,6 @@ class PlantaAzucareraCompleta:
         evap_agua_1ra = 1.75 * f_escala
         vap_5_1ra_th = 0.29 * f_escala
 
-        # Flujo total tras primera carbonatación
         flujo_etapa_3 = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
         t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
 
@@ -161,7 +160,6 @@ class PlantaAzucareraCompleta:
         ms_barros_1ro = caco3_1ra + impurezas_removidas
         barros_1ro = ms_barros_1ro / (float(c['OP_PKF_MS_Barros_pct']) / 100.0)
 
-        # SEPARACIÓN MATEMÁTICA ESTRICTA DE BARROS 1ro
         jugo_claro = flujo_etapa_3 - barros_1ro
         ms_jugo_claro = ms_jugo_crudo + ms_corefin - impurezas_removidas
         pol_jugo_claro = pol_jugo_crudo + pol_corefin
@@ -170,7 +168,6 @@ class PlantaAzucareraCompleta:
         out['OUT_Calentador8_Vapor_th'] = (jugo_claro * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         t_out_1ra_filt = t_out_no8 - float(c['OP_Enfriamiento_1raFiltracion_C'])
 
-        # RECICLOS Y LAVADOS
         filtrato_pkf = 15.90 * f_escala
         ms_filtrato = ms_barros_1ro * 0.05
         pol_filtrato = ms_filtrato * (pol_jugo_claro / ms_jugo_claro)
@@ -181,7 +178,6 @@ class PlantaAzucareraCompleta:
 
         agua_lavado_filtros = 13.73 * f_escala
 
-        # Nueva etapa de suma post-filtración
         flujo_etapa_4 = jugo_claro + filtrato_pkf + azucar_baja + agua_lavado_filtros
 
         t_out_no9 = float(c['OP_Calent_No9_TempSalida_C'])
@@ -194,7 +190,6 @@ class PlantaAzucareraCompleta:
         ms_etapa_5 = ms_jugo_claro + ms_filtrato + ms_azucar_baja
         pol_etapa_5 = pol_jugo_claro + pol_filtrato + pol_azucar_baja
 
-        # Salida a Módulo 4
         flujo_jugo_fino_total = flujo_etapa_5 - lodos_2do
         perdidas_indef = molienda * 0.0016
         flujo_jugo_fino_melting = flujo_jugo_fino_total * (float(c['OP_JugoFino_DestinoMelting_pct']) / 100.0)
@@ -252,7 +247,7 @@ class PlantaAzucareraCompleta:
         out['OUT_JugoFinoCalentado_Temp_C'] = t_14
         return out
 
-def mod_6_casa_cocimiento(self, m1, m7):
+    def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
         from scipy.optimize import fsolve
@@ -262,14 +257,10 @@ def mod_6_casa_cocimiento(self, m1, m7):
 
         brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
         
-        # Obtenemos los flujos y purezas del Licor Estándar desde el Módulo 7
         flujo_liq = float(m7.get('OUT_Corriente_LicorEstandar_Flujo_th', 172.19 * f_escala))
         brix_liq = float(m7.get('OUT_Corriente_LicorEstandar_Brix_pct', 73.90))
         P_liq = float(m7.get('OUT_Corriente_LicorEstandar_Pureza_pct', 93.5))
 
-        # ==========================================
-        # 1. MOTOR MATEMÁTICO: CENTRÍFUGA A
-        # ==========================================
         def modelo_centrifuga_A(vars, *args):
             F_azucar, F_verde, F_blanca, Agua = vars
             F_m, B_m, P_m = args
@@ -294,9 +285,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
         sol_a = fsolve(modelo_centrifuga_A, est_a, args=(flujo_liq, brix_liq, P_liq))
         f_az_comercial, f_verde_a, f_blanca_a, agua_lav_a = sol_a
 
-        # ==========================================
-        # 2. MOTOR MATEMÁTICO: TACHAS B Y C (Cierre Perfecto)
-        # ==========================================
         F_in_b = 67.53 * f_escala
         F_in_c = 32.11 * f_escala
 
@@ -324,9 +312,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
         masa_b = F_in_b
         masa_c = F_in_c
 
-        # ==========================================
-        # 3. EMPAQUETADO DE SALIDAS PARA STREAMLIT
-        # ==========================================
         out.update({
             'OUT_Corriente_MasaCocidaA_Flujo_th': float(flujo_liq),
             'OUT_Corriente_MasaCocidaA_Brix_pct': float(brix_a),
@@ -370,7 +355,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
         flujo_azucar_b_th = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Flujo_th', 35.0))
         pur_azucar_b = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Pureza_pct', 98.7))
 
-        # Polvo
         flujo_polvo = float(m6.get('OUT_Corriente_AzucarComercial_Flujo_th', 72.5)) * 0.06
 
         ms_jarabe = flujo_jarabe_evap_th * (brix_jarabe_evap / 100.0)
@@ -415,30 +399,21 @@ def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
         
-        # Necesitamos importar fsolve dentro del método (o asegúrate de tenerlo al inicio del archivo)
         from scipy.optimize import fsolve
 
-        # ==========================================
-        # 1. ENTRADAS DINÁMICAS (Desde otros módulos)
-        # ==========================================
         flujo_entrada = float(m4.get('OUT_Corriente_JugoFinoCalentado_Flujo_th', 500.0))
         temp_entrada = float(m4.get('OUT_JugoFinoCalentado_Temp_C', 123.8))
         brix_entrada = float(m4.get('OUT_Corriente_JugoFinoCalentado_Brix_pct', 18.40))
         
         if brix_entrada <= 0 or brix_entrada > 40: brix_entrada = 18.40
 
-        # ==========================================
-        # 2. CÁLCULO DE DEMANDAS DE VAPOR (SANGRÍAS PARA INTERFAZ)
-        # ==========================================
         SANGRIA_FIJA = 0.30
         D = [0.0] * 6
         
-        # Efecto 1
         d_v1_h13 = float(m4.get('OUT_Calentador13_Vapor_th', 0.0))
         d_v1_m7 = float(m7.get('OUT_Calentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Calentador15_Vapor_Fuente')) == 'Vapor_1erEfecto' else 0.0
         D[0] = d_v1_h13 + d_v1_m7 + SANGRIA_FIJA
 
-        # Efecto 2
         d_v2_h11 = float(m4.get('OUT_Calentador11_Vapor_th', 0.0))
         d_v2_h12 = float(m4.get('OUT_Calentador12_Vapor_th', 0.0))
         d_v2_m7 = float(m7.get('OUT_Calentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Calentador15_Vapor_Fuente')) == 'Vapor_2doEfecto' else 0.0
@@ -446,21 +421,18 @@ def mod_6_casa_cocimiento(self, m1, m7):
         d_v2_limpiezas = 3.00
         D[1] = d_v2_h11 + d_v2_h12 + d_v2_m7 + d_v2_sec + d_v2_limpiezas + SANGRIA_FIJA
 
-        # Efecto 3
         d_v3_h10 = float(m4.get('OUT_Calentador10_Vapor_th', 0.0))
         d_v3_h9 = float(m3.get('OUT_Calentador9_Vapor_th', 0.0))
         d_v3_tb = float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 0.0))
         d_v3_m7 = float(m7.get('OUT_Calentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Calentador15_Vapor_Fuente')) == 'Vapor_3erEfecto' else 0.0
         D[2] = d_v3_h10 + d_v3_h9 + d_v3_tb + d_v3_m7 + SANGRIA_FIJA
 
-        # Efecto 4
         d_v4_h7 = float(m3.get('OUT_Calentador7_Vapor_th', 0.0))
         d_v4_ta = float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 0.0))
         d_v4_tc = float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 0.0))
         d_v4_m7 = float(m7.get('OUT_Calentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Calentador15_Vapor_Fuente')) == 'Vapor_4toEfecto' else 0.0
         D[3] = d_v4_h7 + d_v4_ta + d_v4_tc + d_v4_m7 + SANGRIA_FIJA
 
-        # Efecto 5
         d_v5_h56 = float(m3.get('OUT_Calentador5_6_Vapor_th', 0.0))
         d_v5_h8 = float(m3.get('OUT_Calentador8_Vapor_th', 0.0))
         d_v5_h17 = float(m1.get('OUT_Calentador17_Vapor_th', 0.0))
@@ -469,7 +441,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
         d_v5_vaho = 0.29 * (float(c['IN_Molienda_th'])/445.0)
         D[4] = d_v5_h56 + d_v5_h8 + d_v5_h17 + d_v5_h18 + d_v5_h20 + d_v5_vaho + SANGRIA_FIJA
 
-        # Efecto 6
         d_v6_h00 = float(m2.get('OUT_Calentador00_Vapor_th', 0.0))
         d_v6_h0 = float(m2.get('OUT_Calentador0_Vapor_th', 0.0))
         d_v6_h1 = float(m2.get('OUT_Calentador1_Vapor_th', 0.0))
@@ -477,18 +448,13 @@ def mod_6_casa_cocimiento(self, m1, m7):
         d_v6_h3 = float(m2.get('OUT_Calentador3_Vapor_th', 0.0))
         D[5] = d_v6_h00 + d_v6_h0 + d_v6_h1 + d_v6_h2 + d_v6_h3 + SANGRIA_FIJA
 
-        # Ajuste dinámico de Sangrías Netas (Demanda - Flash)
         factor_escala = flujo_entrada / 502.82
         flash_offsets = [8.42, 12.30, 53.36, 55.70, 19.87, 0.0] 
         Sangrias_netas = [(D[i] - (flash_offsets[i] * factor_escala)) for i in range(6)]
 
-        # ==========================================
-        # 3. MOTOR TERMODINÁMICO Y SOLVER
-        # ==========================================
         T_jugo = [131.6, 127.3, 122.2, 116.5, 110.8, 99.5]
         T_vapor = [136.8, 131.0, 126.4, 120.2, 112.4, 106.5, 94.0]
         
-        # El vapor vivo es un estimado inicial basado en la masa, el solver afinará
         V_vivo_0 = 117.34 * factor_escala 
 
         def cp_jugo(brix): return 4.184 * (1.0 - (0.006 * brix))
@@ -506,11 +472,9 @@ def mod_6_casa_cocimiento(self, m1, m7):
                 T_jugo_in = temp_entrada if i == 0 else T_j[i-1]
                 V_calefaccion = V_vivo if i == 0 else (V_evap[i-1] - Sangs[i-1])
                 
-                # Masas y Sólidos
                 ecuaciones.append(F_in - F_out[i] - V_evap[i])
                 ecuaciones.append((F_in * Brix_in) - (F_out[i] * Brix_out[i]))
                 
-                # Energía estabilizada
                 calor_sens = F_in * cp_jugo(Brix_in) * (T_jugo_in - T_j[i])
                 evap_flash = calor_sens / calor_latente(T_v[i+1])
                 energia_transf = V_calefaccion * calor_latente(T_v[i]) * eficiencias[i]
@@ -520,7 +484,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
                 
             return ecuaciones
 
-        # Estimación inicial escalada para ayudar al solver
         est = [400, 300, 200, 150, 140, 133, 100, 100, 50, 50, 5, 15, 23, 31, 46, 61, 63, 69]
         est_escalada = [v * factor_escala if i < 12 else v for i, v in enumerate(est)]
         
@@ -530,9 +493,6 @@ def mod_6_casa_cocimiento(self, m1, m7):
         V_evap_calc = solucion[6:12]
         Brix_out_calc = solucion[12:18]
 
-        # ==========================================
-        # 4. REGISTRO DE SALIDAS PARA STREAMLIT
-        # ==========================================
         out['OUT_Corriente_Jarabe_Flujo_th'] = float(F_out_calc[-1])
         out['OUT_Corriente_Jarabe_Brix_pct'] = float(Brix_out_calc[-1])
         out['OUT_Corriente_Jarabe_Pureza_pct'] = float(m4.get('OUT_Corriente_JugoFinoCalentado_Pureza_pct', 91.60))
@@ -549,17 +509,14 @@ def mod_6_casa_cocimiento(self, m1, m7):
             out[f'OUT_M5_Oferta_Ef{i+1}_TOTAL_Generado_th'] = float(V_evap_calc[i])
             out[f'OUT_M5_Salida_Ef{i+1}_Brix_pct'] = float(Brix_out_calc[i])
 
-        # Condensados base (aproximación para no romper Módulo 8)
         out['OUT_Condensados_Calderas4056_th'] = float(V_vivo_0)
         out['OUT_Condensado_CascadaFinal_9635_th'] = float(V_evap_calc[-1])
 
-        # Bypasses lógicos
         out['OUT_Bypass_2Efecto_th'] = max(0.0, float(D[0] - V_evap_calc[0]))
         out['OUT_Bypass_3Efecto_th'] = max(0.0, float(D[1] - V_evap_calc[1]))
         out['OUT_Bypass_4Efecto_th'] = max(0.0, float(D[2] - V_evap_calc[2]))
         out['OUT_Bypass_5Efecto_th'] = max(0.0, float(D[3] - V_evap_calc[3]))
 
-       # Vapor de escape real requerido por el Efecto 1 (calculado por el solver)
         out['OUT_VaporCalderas_1erEfecto_th'] = float(V_vivo_0)
 
         return out
@@ -795,13 +752,11 @@ tabs = st.tabs([
 def render_modulo_tab(mod_key, titulo):
     st.subheader(f"📊 Salidas del Balance: {titulo}")
 
-    # 1. Mostrar todos los escalares (Aquí aparecen las corrientes y desgloses de t/h)
     dict_data = {k: v for k, v in resultados[mod_key].items() if not isinstance(v, dict)}
     if dict_data:
         df = pd.DataFrame(list(dict_data.items()), columns=['Variable del Proceso', 'Valor Calculado'])
         st.dataframe(df, use_container_width=True, hide_index=True)
 
-    # 2. Mostrar diccionarios/matrices extras
     for k, v in resultados[mod_key].items():
         if isinstance(v, dict):
             st.write(f"**Detalle Extra: {k}**")
