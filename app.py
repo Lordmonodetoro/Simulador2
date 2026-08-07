@@ -252,7 +252,7 @@ class PlantaAzucareraCompleta:
         out['OUT_JugoFinoCalentado_Temp_C'] = t_14
         return out
 
-    def mod_6_casa_cocimiento(self, m1, m7):
+def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
         from scipy.optimize import fsolve
@@ -268,64 +268,85 @@ class PlantaAzucareraCompleta:
         P_liq = float(m7.get('OUT_Corriente_LicorEstandar_Pureza_pct', 93.5))
 
         # ==========================================
-        # MOTOR MATEMÁTICO: CENTRÍFUGA A (Multicomponente)
+        # 1. MOTOR MATEMÁTICO: CENTRÍFUGA A
         # ==========================================
         def modelo_centrifuga_A(vars, *args):
             F_azucar, F_verde, F_blanca, Agua = vars
             F_m, B_m, P_m = args
             
-            # 1. Balance de Masa Total
             eq_masa = (F_m + Agua) - (F_azucar + F_verde + F_blanca)
-            
-            # 2. Balance de Sólidos (Brix)
             MS_in = F_m * (B_m / 100.0)
             MS_az = F_azucar * 0.999
             MS_ver = F_verde * 0.787
             MS_bla = F_blanca * 0.780
             eq_sol = MS_in - (MS_az + MS_ver + MS_bla)
             
-            # 3. Balance de Sacarosa (Pureza)
             Pol_in = MS_in * (P_m / 100.0)
             Pol_az = MS_az * 0.999
             Pol_ver = MS_ver * 0.837
             Pol_bla = MS_bla * 0.874
             eq_pol = Pol_in - (Pol_az + Pol_ver + Pol_bla)
             
-            # 4. Relación operativa de la centrífuga
             eq_op = F_blanca - (0.25 * F_verde)
-            
             return [eq_masa, eq_sol, eq_pol, eq_op]
 
-        # Estimación inicial basada en factores de escala
-        est = [77.11 * f_escala, 64.14 * f_escala, 16.03 * f_escala, 3.27 * f_escala]
-        solucion = fsolve(modelo_centrifuga_A, est, args=(flujo_liq, brix_liq, P_liq))
-        
-        f_azucar, f_verde, f_blanca, agua_lav = solucion
+        est_a = [77.11 * f_escala, 64.14 * f_escala, 16.03 * f_escala, 3.27 * f_escala]
+        sol_a = fsolve(modelo_centrifuga_A, est_a, args=(flujo_liq, brix_liq, P_liq))
+        f_az_comercial, f_verde_a, f_blanca_a, agua_lav_a = sol_a
 
-        # Estimaciones complementarias para B y C (proporcionales al factor de escala)
-        masa_b = 67.53 * f_escala
-        masa_c = 32.11 * f_escala
-        melaza_final = 23.08 * f_escala
+        # ==========================================
+        # 2. MOTOR MATEMÁTICO: TACHAS B Y C (Cierre Perfecto)
+        # ==========================================
+        # Alimentaciones proporcionales a la molienda
+        F_in_b = 67.53 * f_escala
+        F_in_c = 32.11 * f_escala
 
-        # Empaquetado de salidas para la interfaz de Streamlit
+        def modelo_tachas_b_c(vars, *args):
+            F_az_b, F_miel_b, F_az_c, F_melaza = vars
+            in_b, in_c = args
+            
+            rend_b = 0.481
+            rend_c = 0.387
+            evap_b = 5.28 * f_escala
+            evap_c = -0.81 * f_escala
+            agua_c = 2.59 * f_escala
+            
+            eq_az_b = F_az_b - (in_b * rend_b)
+            eq_miel_b = F_miel_b - (in_b - (in_b * rend_b) - evap_b)
+            eq_az_c = F_az_c - (in_c * rend_c)
+            eq_melaza = F_melaza - (in_c + agua_c - (in_c * rend_c) - evap_c)
+            
+            return [eq_az_b, eq_miel_b, eq_az_c, eq_melaza]
+
+        est_bc = [32.48 * f_escala, 29.77 * f_escala, 12.0 * f_escala, 23.08 * f_escala]
+        sol_bc = fsolve(modelo_tachas_b_c, est_bc, args=(F_in_b, F_in_c))
+        f_az_b, f_miel_b, f_az_c, f_melaza_final = sol_bc
+
+        # Estimaciones de masecadas
+        masa_b = F_in_b
+        masa_c = F_in_c
+
+        # ==========================================
+        # 3. EMPAQUETADO DE SALIDAS PARA STREAMLIT
+        # ==========================================
         out.update({
             'OUT_Corriente_MasaCocidaA_Flujo_th': flujo_liq,
             'OUT_Corriente_MasaCocidaA_Brix_pct': brix_a,
             'OUT_Corriente_MasaCocidaA_Pureza_pct': P_liq,
 
-            'OUT_Corriente_AzucarComercial_Flujo_th': f_azucar,
+            'OUT_Corriente_AzucarComercial_Flujo_th': float(f_az_comercial),
             'OUT_Corriente_AzucarComercial_Brix_pct': 100.0,
             'OUT_Corriente_AzucarComercial_Pureza_pct': 99.9,
 
-            'OUT_Corriente_MasaCocidaB_Flujo_th': masa_b,
+            'OUT_Corriente_MasaCocidaB_Flujo_th': float(masa_b),
             'OUT_Corriente_MasaCocidaB_Brix_pct': float(c['OP_Cocimiento_BrixMasaB_pct']),
             'OUT_Corriente_MasaCocidaB_Pureza_pct': 86.1,
 
-            'OUT_Corriente_MasaCocidaC_Flujo_th': masa_c,
+            'OUT_Corriente_MasaCocidaC_Flujo_th': float(masa_c),
             'OUT_Corriente_MasaCocidaC_Brix_pct': float(c['OP_Cocimiento_BrixMasaC_pct']),
             'OUT_Corriente_MasaCocidaC_Pureza_pct': 73.0,
 
-            'OUT_Corriente_MelazaFinal_Flujo_th': melaza_final,
+            'OUT_Corriente_MelazaFinal_Flujo_th': float(f_melaza_final),
             'OUT_Corriente_MelazaFinal_Brix_pct': 79.70,
             'OUT_Corriente_MelazaFinal_Pureza_pct': 57.20,
 
