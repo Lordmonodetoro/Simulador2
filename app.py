@@ -60,7 +60,7 @@ class PlantaAzucareraCompleta:
         vap_20 = (f_desesp * 1.0 * dt_20) / self.cat_vap['Vapor_5toEfecto']['entalpia']
 
         out.update({
-            'OUT_CanaProcesada_th': molienda,
+            'OUT_RemolachaProcesada_th': molienda,
             'OUT_Corriente_JugoCrudo_Flujo_th': flujo_jugo,
             'OUT_Corriente_JugoCrudo_Brix_pct': 17.16,
             'OUT_Corriente_JugoCrudo_Pureza_pct': float(c['IN_Pureza_Agricola_pct']),
@@ -84,9 +84,9 @@ class PlantaAzucareraCompleta:
 
         rutas_vapor = {
             '00': 'Vapor_Tachas_57C', 
-            '0': 'Vapor_Escape', 
-            '1': 'Vapor_Escape', 
-            '2': 'Vapor_Escape', 
+            '0': 'Vapor_Tachas_57C', 
+            '1': 'Vapor_Tachas_57C', 
+            '2': 'Vapor_Tachas_57C', 
             '3': 'Vapor_6toEfecto'
         }
 
@@ -105,7 +105,7 @@ class PlantaAzucareraCompleta:
     def mod_3_depuracion(self, m1, m2, m8):
         c = self.config
         out = {}
-        molienda = float(m1['OUT_CanaProcesada_th'])
+        molienda = float(m1['OUT_RemolachaProcesada_th'])
         f_escala = molienda / 445.0
         
         flujo_jugo_entrada = float(m2['OUT_Corriente_JugoCrudoCaliente_Flujo_th'])
@@ -116,7 +116,6 @@ class PlantaAzucareraCompleta:
         pol_jugo_crudo = ms_jugo_crudo * (pureza_entrada / 100.0)
         cp_jugo = 0.94
         
-        # 1. ESTEQUIOMETRÍA CORREGIDA
         t_CaO_total = molienda * (float(c['OP_Depuracion_CaO_pct_remolacha']) / 100.0)
         caco3_total = t_CaO_total * (100.0/56.0)
         co2_total = t_CaO_total * (44.0/56.0)
@@ -125,7 +124,6 @@ class PlantaAzucareraCompleta:
         azucar_corefin = float(c['OP_AzucarCorefin_th']) * f_escala
         ms_corefin = azucar_corefin
         
-        # Demandas de Calor Térmico
         flujo_etapa_2 = flujo_jugo_entrada + agua_lechada + t_CaO_total + azucar_corefin
         t_out_3b = float(c['OP_Calent_3B_TempSalida_C'])
         t_out_4 = float(c['OP_Calent_4_TempSalida_C'])
@@ -136,7 +134,6 @@ class PlantaAzucareraCompleta:
         out['OUT_Calentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         out['OUT_Calentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
         
-        # 2. FORMACIÓN DE BARROS Y PURGA DE IMPUREZAS
         impurezas_removidas = ms_jugo_crudo * (1.0 - pureza_entrada/100.0) * 0.30
         ms_barros_1ro = caco3_total + impurezas_removidas
         barros_1ro_humedos = ms_barros_1ro / (float(c['OP_PKF_MS_Barros_pct']) / 100.0)
@@ -160,12 +157,10 @@ class PlantaAzucareraCompleta:
         out['OUT_Calentador9_Vapor_th'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
         t_out_2da_carb = t_out_no9 - float(c['OP_Enfriamiento_2daCarb_C'])
         
-        # 3. BALANCE DE MASA FINAL EXACTO
         flujo_jugo_fino_total = (flujo_jugo_entrada + agua_lechada + t_CaO_total + co2_total + 
                                 azucar_corefin + azucar_baja + agua_lavado_filtros + vap_5_1ra_th - 
                                 barros_1ro_humedos - evap_agua_1ra - evap_agua_2da)
         
-        # 4. BALANCE DE SÓLIDOS FINAL
         ms_filtrato = ms_barros_1ro * 0.05
         pol_filtrato = ms_filtrato * 0.90
         perdidas_indef = molienda * 0.0016
@@ -222,7 +217,7 @@ class PlantaAzucareraCompleta:
     def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
-        molienda = float(m1.get('OUT_CanaProcesada_th', float(c['IN_Molienda_th'])))
+        molienda = float(m1.get('OUT_RemolachaProcesada_th', float(c['IN_Molienda_th'])))
         f_escala = molienda / 445.0
         brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
         flujo_liq = float(m7.get('OUT_Corriente_LicorEstandar_Flujo_th', 172.19 * f_escala))
@@ -312,7 +307,9 @@ class PlantaAzucareraCompleta:
         
         flujo_azucar_b_th = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Flujo_th', 32.48))
         pur_azucar_b = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Pureza_pct', 98.7))
-        flujo_polvo = float(m6.get('OUT_Corriente_AzucarComercial_Flujo_th', 72.5)) * 0.06
+        
+        # Corrección: 6.36% en lugar del 6.0% genérico
+        flujo_polvo = float(m6.get('OUT_Corriente_AzucarComercial_Flujo_th', 72.5)) * 0.0636
         
         ms_jarabe = flujo_jarabe_evap_th * (brix_jarabe_evap / 100.0)
         pol_jarabe = ms_jarabe * (pur_jarabe_evap / 100.0)
@@ -473,7 +470,7 @@ class PlantaAzucareraCompleta:
         flash_9635 = total_9635 * 0.045
         neto_liquido_9635 = total_9635 - flash_9635
         
-        scrubber_th = float(m1.get('OUT_CanaProcesada_th', 445.0)) * (12.0 / 445.0)
+        scrubber_th = float(m1.get('OUT_RemolachaProcesada_th', 445.0)) * (12.0 / 445.0)
         intercambiador_3b_2080_1 = max(0.0, neto_liquido_9635 - scrubber_th)
         
         fuentes_9620 = [
