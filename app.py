@@ -102,7 +102,7 @@ class PlantaAzucareraCompleta:
         out['OUT_Corriente_JugoCrudoCaliente_Pureza_pct'] = pur_jugo
         return out
 
-def mod_3_depuracion(self, m1, m2, m8):
+    def mod_3_depuracion(self, m1, m2, m8):
         c = self.config
         out = {}
         molienda = float(m1['OUT_RemolachaProcesada_th'])
@@ -116,20 +116,15 @@ def mod_3_depuracion(self, m1, m2, m8):
         pol_jugo_crudo = ms_jugo_crudo * (pureza_entrada / 100.0)
         cp_jugo = 0.94
         
-        # Insumos químicos
         t_CaO_total = molienda * (float(c['OP_Depuracion_CaO_pct_remolacha']) / 100.0)
         caco3_total = t_CaO_total * (100.0/56.0)
-        co2_total = t_CaO_total * (44.0/56.0)  # Total CO2 reaccionado
+        co2_total = t_CaO_total * (44.0/56.0)
         
         azucar_corefin = float(c['OP_AzucarCorefin_th']) * f_escala
         azucar_baja = 0.54 * f_escala
-        agua_lavado_filtros = 11.47 * f_escala # Corregido al valor nominal de diseño A.AG6
-        
-        # El agua de lechada proviene de un lazo cerrado interno (Sweet water de los filtros), 
-        # por lo que NO aporta masa neta al balance global de la depuración.
+        agua_lavado_filtros = 11.47 * f_escala
         agua_lechada_interna = 33.77 * f_escala 
         
-        # Caudal interno para cálculos térmicos (Hot Main Liming)
         flujo_etapa_2 = flujo_jugo_entrada + agua_lechada_interna + t_CaO_total + azucar_corefin
         
         t_out_3b = float(c['OP_Calent_3B_TempSalida_C'])
@@ -141,18 +136,14 @@ def mod_3_depuracion(self, m1, m2, m8):
         out['OUT_Calentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         out['OUT_Calentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
         
-        # Pérdidas y purgas
         pol_lost_mud = molienda * 0.0004
         undefined_losses = 0.70 * f_escala
-        # Calibramos la remoción de impurezas para igualar las 17.7 t/h de barros reales de ACOR
         impurezas_removidas = ms_jugo_crudo * (1.0 - pureza_entrada/100.0) * 0.15 
         
         ms_barros_1ro = caco3_total + impurezas_removidas + pol_lost_mud
         barros_1ro_humedos = ms_barros_1ro / (float(c['OP_PKF_MS_Barros_pct']) / 100.0)
         
         t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
-        
-        # Caudal aproximado post 1ra carb para cálculos térmicos
         flujo_claro_aprox = flujo_etapa_2 + co2_total - barros_1ro_humedos - agua_lechada_interna
         
         t_out_no8 = float(c['OP_Calent_No8_TempSalida_C'])
@@ -160,6 +151,7 @@ def mod_3_depuracion(self, m1, m2, m8):
         
         evap_agua_1ra = 1.75 * f_escala
         evap_agua_2da = 0.80 * f_escala
+        vap_5_1ra_th = 0.29 * f_escala
         
         t_out_1ra_filt = t_out_no8 - float(c['OP_Enfriamiento_1raFiltracion_C'])
         flujo_etapa_4 = flujo_claro_aprox + azucar_baja + agua_lavado_filtros
@@ -168,19 +160,16 @@ def mod_3_depuracion(self, m1, m2, m8):
         out['OUT_Calentador9_Vapor_th'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
         t_out_2da_carb = t_out_no9 - float(c['OP_Enfriamiento_2daCarb_C'])
         
-        # BALANCE DE MASA MACRO EXACTO
         flujo_jugo_fino_total = (flujo_jugo_entrada + t_CaO_total + co2_total + 
-                                azucar_corefin + azucar_baja + agua_lavado_filtros - 
+                                azucar_corefin + azucar_baja + agua_lavado_filtros + vap_5_1ra_th - 
                                 barros_1ro_humedos - evap_agua_1ra - evap_agua_2da - undefined_losses)
         
-        # BALANCE DE SÓLIDOS MACRO EXACTO
         ms_fino_final = ms_jugo_crudo + (azucar_corefin * 0.998) + (azucar_baja * 0.98) - impurezas_removidas - pol_lost_mud - undefined_losses
         pol_fino_final = pol_jugo_crudo + (azucar_corefin * 0.992) + (azucar_baja * 0.95) - pol_lost_mud - undefined_losses
         
         brix_fino = (ms_fino_final / flujo_jugo_fino_total) * 100.0
         pureza_fino = (pol_fino_final / ms_fino_final) * 100.0
         
-        # Distribución hacia Calentadores (M4) y hacia Refundición (M7)
         flujo_jugo_fino_melting = flujo_jugo_fino_total * (float(c['OP_JugoFino_DestinoMelting_pct']) / 100.0)
         flujo_jugo_fino_mod4 = max(0.1, flujo_jugo_fino_total - flujo_jugo_fino_melting)
         
@@ -265,7 +254,6 @@ def mod_3_depuracion(self, m1, m2, m8):
         sol_a = fsolve(modelo_pan_centrifuga_A, est_a, args=(MS_liq, Pol_liq, brix_a))
         f_masa_a, f_az_comercial, f_verde_a, f_blanca_a, agua_lav_a = sol_a
         
-        # Evitar división por cero en las primeras iteraciones
         F_in_b = f_verde_a * (67.53 / 64.14) if f_verde_a > 0 else 67.53 * f_escala
         F_in_c = F_in_b * (32.11 / 67.53) if F_in_b > 0 else 32.11 * f_escala
         
@@ -290,7 +278,6 @@ def mod_3_depuracion(self, m1, m2, m8):
         masa_b = F_in_b
         masa_c = F_in_c
         
-        # Evitar división por cero en la pureza
         dem = (MS_liq + (f_blanca_a * 0.780))
         pur_a = (Pol_liq + (f_blanca_a * 0.874)) / dem * 100 if dem > 0 else 93.5
         
