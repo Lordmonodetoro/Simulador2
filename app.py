@@ -537,10 +537,8 @@ class PlantaAzucareraCompleta:
         out['OUT_Bypass_4Efecto_th'] = max(0.0, float(D[2] - V_evap_calc[2]))
         out['OUT_Bypass_5Efecto_th'] = max(0.0, float(D[3] - V_evap_calc[3]))
 
-        # Vapor desde caldera
-        q_sens = (flujo_entrada * cp_jugo(brix_entrada) * max(0.0, T_jugo[0] - temp_entrada))
-        q_lat = (V_vivo_0 * calor_latente(T_vapor[0]))
-        out['OUT_VaporCalderas_1erEfecto_th'] = float((q_sens + q_lat) / self.cat_vap['Vapor_Escape']['entalpia'])
+       # Vapor de escape real requerido por el Efecto 1 (calculado por el solver)
+        out['OUT_VaporCalderas_1erEfecto_th'] = float(V_vivo_0)
 
         return out
 
