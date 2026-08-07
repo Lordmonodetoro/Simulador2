@@ -213,39 +213,54 @@ def mod_3_depuracion(self, m1, m2, m8):
         
         return out
 
-    def mod_6_casa_cocimiento(self, m1, m7):
+def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
         molienda = float(m1.get('OUT_RemolachaProcesada_th', float(c['IN_Molienda_th'])))
         f_escala = molienda / 445.0
         brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
+        
         flujo_liq = float(m7.get('OUT_Corriente_LicorEstandar_Flujo_th', 172.19 * f_escala))
         brix_liq = float(m7.get('OUT_Corriente_LicorEstandar_Brix_pct', 73.90))
         P_liq = float(m7.get('OUT_Corriente_LicorEstandar_Pureza_pct', 93.5))
         
-        def modelo_centrifuga_A(vars, *args):
-            F_azucar, F_verde, F_blanca, Agua = vars
-            F_m, B_m, P_m = args
-            eq_masa = (F_m + Agua) - (F_azucar + F_verde + F_blanca)
-            MS_in = F_m * (B_m / 100.0)
+        # Modelo unificado: Tacho A + Centrífuga A
+        def modelo_pan_centrifuga_A(vars, *args):
+            F_masa, F_azucar, F_verde, F_blanca, Agua = vars
+            MS_liq, Pol_liq, b_a = args
+            
+            # Recirculación interna del Tacho A
+            MS_blanca = F_blanca * 0.780
+            Pol_blanca = MS_blanca * 0.874
+            MS_masa = MS_liq + MS_blanca
+            Pol_masa = Pol_liq + Pol_blanca
+            
+            # Balance de Masa Cocida A
+            eq_masa_flow = F_masa - (MS_masa / (b_a / 100.0))
+            
+            # Balance centrífuga
+            eq_masa_total = (F_masa + Agua) - (F_azucar + F_verde + F_blanca)
             MS_az = F_azucar * 0.999
             MS_ver = F_verde * 0.787
-            MS_bla = F_blanca * 0.780
-            eq_sol = MS_in - (MS_az + MS_ver + MS_bla)
-            Pol_in = MS_in * (P_m / 100.0)
+            eq_sol = MS_masa - (MS_az + MS_ver + MS_blanca)
+            
             Pol_az = MS_az * 0.999
             Pol_ver = MS_ver * 0.837
-            Pol_bla = MS_bla * 0.874
-            eq_pol = Pol_in - (Pol_az + Pol_ver + Pol_bla)
-            eq_op = F_blanca - (0.25 * F_verde)
-            return [eq_masa, eq_sol, eq_pol, eq_op]
+            eq_pol = Pol_masa - (Pol_az + Pol_ver + Pol_blanca)
             
-        est_a = [77.11 * f_escala, 64.14 * f_escala, 16.03 * f_escala, 3.27 * f_escala]
-        sol_a = fsolve(modelo_centrifuga_A, est_a, args=(flujo_liq, brix_liq, P_liq))
-        f_az_comercial, f_verde_a, f_blanca_a, agua_lav_a = sol_a
+            eq_op = F_blanca - (0.25 * F_verde)
+            return [eq_masa_flow, eq_masa_total, eq_sol, eq_pol, eq_op]
+            
+        MS_liq = flujo_liq * (brix_liq / 100.0)
+        Pol_liq = MS_liq * (P_liq / 100.0)
         
-        F_in_b = 67.53 * f_escala
-        F_in_c = 32.11 * f_escala
+        est_a = [153.6 * f_escala, 72.5 * f_escala, 64.1 * f_escala, 16.0 * f_escala, 3.2 * f_escala]
+        sol_a = fsolve(modelo_pan_centrifuga_A, est_a, args=(MS_liq, Pol_liq, brix_a))
+        f_masa_a, f_az_comercial, f_verde_a, f_blanca_a, agua_lav_a = sol_a
+        
+        # Flujos hacia B y C dinámicos (escalados en base a la producción real de miel verde)
+        F_in_b = f_verde_a * (67.53 / 64.14)
+        F_in_c = F_in_b * (32.11 / 67.53)
         
         def modelo_tachas_b_c(vars, *args):
             F_az_b, F_miel_b, F_az_c, F_melaza = vars
@@ -269,9 +284,9 @@ def mod_3_depuracion(self, m1, m2, m8):
         masa_c = F_in_c
         
         out.update({
-            'OUT_Corriente_MasaCocidaA_Flujo_th': float(flujo_liq),
+            'OUT_Corriente_MasaCocidaA_Flujo_th': float(f_masa_a),
             'OUT_Corriente_MasaCocidaA_Brix_pct': float(brix_a),
-            'OUT_Corriente_MasaCocidaA_Pureza_pct': float(P_liq),
+            'OUT_Corriente_MasaCocidaA_Pureza_pct': float((Pol_liq + (f_blanca_a * 0.874)) / (MS_liq + (f_blanca_a * 0.780)) * 100),
             'OUT_Corriente_AzucarComercial_Flujo_th': float(f_az_comercial),
             'OUT_Corriente_AzucarComercial_Brix_pct': 100.0,
             'OUT_Corriente_AzucarComercial_Pureza_pct': 99.9,
@@ -292,7 +307,6 @@ def mod_3_depuracion(self, m1, m2, m8):
             'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala
         })
         return out
-
     def mod_7_refundicion(self, m5, m3, m6):
         c = self.config
         out = {}
