@@ -634,7 +634,7 @@ with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=
     op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
     op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
-    op_turb_cons = 950.0
+    op_turb_cons = 90.0
 
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
