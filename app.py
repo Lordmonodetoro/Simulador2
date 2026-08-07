@@ -132,13 +132,11 @@ class PlantaAzucareraCompleta:
         out['OUT_Calentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         out['OUT_Calentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
         
-        # Balance riguroso de barros y pérdidas de azúcar
         ms_barros_1ro = 17.70 * f_escala * (float(c['OP_PKF_MS_Barros_pct']) / 100.0)
         barros_1ro_humedos = ms_barros_1ro / (float(c['OP_PKF_MS_Barros_pct']) / 100.0)
         pol_lost_mud = molienda * 0.0004
         undefined_losses = 0.70 * f_escala
         
-        # Impurezas netas que se logran sacar del jugo
         impurezas_removidas = max(0.0, ms_barros_1ro - caco3_total - pol_lost_mud)
         
         t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
@@ -224,21 +222,17 @@ class PlantaAzucareraCompleta:
         brix_liq = float(m7.get('OUT_Corriente_LicorEstandar_Brix_pct', 73.90))
         P_liq = float(m7.get('OUT_Corriente_LicorEstandar_Pureza_pct', 93.5))
         
-        # Modelo unificado: Tacho A + Centrífuga A
         def modelo_pan_centrifuga_A(vars, *args):
             F_masa, F_azucar, F_verde, F_blanca, Agua = vars
             MS_liq, Pol_liq, b_a = args
             
-            # Recirculación interna del Tacho A
             MS_blanca = F_blanca * 0.780
             Pol_blanca = MS_blanca * 0.874
             MS_masa = MS_liq + MS_blanca
             Pol_masa = Pol_liq + Pol_blanca
             
-            # Balance de Masa Cocida A
             eq_masa_flow = F_masa - (MS_masa / (b_a / 100.0))
             
-            # Balance centrífuga
             eq_masa_total = (F_masa + Agua) - (F_azucar + F_verde + F_blanca)
             MS_az = F_azucar * 0.999
             MS_ver = F_verde * 0.787
@@ -258,9 +252,9 @@ class PlantaAzucareraCompleta:
         sol_a = fsolve(modelo_pan_centrifuga_A, est_a, args=(MS_liq, Pol_liq, brix_a))
         f_masa_a, f_az_comercial, f_verde_a, f_blanca_a, agua_lav_a = sol_a
         
-        # Flujos hacia B y C dinámicos (escalados en base a la producción real de miel verde)
-        F_in_b = f_verde_a * (67.53 / 64.14)
-        F_in_c = F_in_b * (32.11 / 67.53)
+        # Evitar división por cero en las primeras iteraciones
+        F_in_b = f_verde_a * (67.53 / 64.14) if f_verde_a > 0 else 67.53 * f_escala
+        F_in_c = F_in_b * (32.11 / 67.53) if F_in_b > 0 else 32.11 * f_escala
         
         def modelo_tachas_b_c(vars, *args):
             F_az_b, F_miel_b, F_az_c, F_melaza = vars
@@ -283,10 +277,14 @@ class PlantaAzucareraCompleta:
         masa_b = F_in_b
         masa_c = F_in_c
         
+        # Evitar división por cero en la pureza
+        dem = (MS_liq + (f_blanca_a * 0.780))
+        pur_a = (Pol_liq + (f_blanca_a * 0.874)) / dem * 100 if dem > 0 else 93.5
+        
         out.update({
             'OUT_Corriente_MasaCocidaA_Flujo_th': float(f_masa_a),
             'OUT_Corriente_MasaCocidaA_Brix_pct': float(brix_a),
-            'OUT_Corriente_MasaCocidaA_Pureza_pct': float((Pol_liq + (f_blanca_a * 0.874)) / (MS_liq + (f_blanca_a * 0.780)) * 100),
+            'OUT_Corriente_MasaCocidaA_Pureza_pct': float(pur_a),
             'OUT_Corriente_AzucarComercial_Flujo_th': float(f_az_comercial),
             'OUT_Corriente_AzucarComercial_Brix_pct': 100.0,
             'OUT_Corriente_AzucarComercial_Pureza_pct': 99.9,
@@ -322,7 +320,6 @@ class PlantaAzucareraCompleta:
         flujo_azucar_b_th = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Flujo_th', 32.48))
         pur_azucar_b = float(m6.get('OUT_Corriente_AzucarB_Fundicion_Pureza_pct', 98.7))
         
-        # Corrección: 6.36% en lugar del 6.0% genérico
         flujo_polvo = float(m6.get('OUT_Corriente_AzucarComercial_Flujo_th', 72.5)) * 0.0636
         
         ms_jarabe = flujo_jarabe_evap_th * (brix_jarabe_evap / 100.0)
@@ -537,35 +534,22 @@ class PlantaAzucareraCompleta:
         })
         return out
 
-def simular(self):
+    def simular(self):
         m1 = self.mod_1_difusiones()
         m2 = self.mod_2_calentamiento_crudo(m1)
-        
-        # 1. Inicializamos diccionarios vacíos para arrancar la planta "en frío"
         m3, m4, m5, m6, m7, m8 = {}, {}, {}, {}, {}, {}
         
-        # 2. Bucle de Convergencia (6 iteraciones estabilizan las recirculaciones al 100%)
-        for iteracion in range(6):
+        for _ in range(6):
             m3 = self.mod_3_depuracion(m1, m2, m8)
             m4 = self.mod_4_calentamiento_jugo_fino(m3)
-            
-            # Se calcula la refundición con lo que haya de jarabe (m5) y azúcar B (m6)
             m7 = self.mod_7_refundicion(m5, m3, m6)
-            
-            # Cocimiento cristaliza basándose en el nuevo Licor Estándar (m7)
             m6 = self.mod_6_casa_cocimiento(m1, m7)
-            
-            # Recalculamos la refundición al instante ahora que tenemos el Azúcar B real
             m7 = self.mod_7_refundicion(m5, m3, m6)
-            
-            # Evaporación y Condensados se actualizan con las sangrías correctas
             m5 = self.mod_5_evaporacion(m4, m3, m6, m7, m1, m2)
             m8 = self.mod_8_condensados_agua(m5, m6, m4, m3, m1, m2, m7)
             
-        # 3. Tras estabilizar la fábrica, ejecutamos Energía (M9) que recopila todo
         m9 = self.mod_9_energia(m1, m4, m5, m6)
         
-        # 4. Redondeo final para la interfaz gráfica
         for modulo in [m1, m2, m3, m4, m5, m6, m7, m8, m9]:
             for k, v in modulo.items():
                 if isinstance(v, (int, float, np.floating)):
