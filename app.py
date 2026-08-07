@@ -95,6 +95,7 @@ class PlantaAzucareraCompleta:
         ms_jugo_crudo = flujo_jugo_entrada * (brix_entrada / 100.0)
         pol_jugo_crudo = ms_jugo_crudo * (pureza_entrada / 100.0)
         cp_jugo = 0.94
+        cp_agua = 1.00
         lodos_2do = 27.17 * f_escala
         t_CaO_total = molienda * (float(c['OP_Depuracion_CaO_pct_remolacha']) / 100.0)
         flujo_lechada_total = t_CaO_total / 0.1444
@@ -391,7 +392,7 @@ class PlantaAzucareraCompleta:
             'OUT_M5_Demanda_V5_Total_th': float(D[4]),
             'OUT_M5_Demanda_V6_Total_th': float(D[5]),
             'OUT_Condensados_Calderas4056_th': float(V_vivo_0),
-            'OUT_Condensado_CascadaFinal_9635_th': float(V_evap_calc[-1]),
+            'OUT_Condensado_CascadaFinal_9635_th': float(sum(V_evap_calc)),
             'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0)
         })
         for i in range(6):
