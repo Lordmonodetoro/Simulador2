@@ -102,7 +102,7 @@ class PlantaAzucareraCompleta:
         out['OUT_Corriente_JugoCrudoCaliente_Pureza_pct'] = pur_jugo
         return out
 
-def mod_3_depuracion(self, m1, m2, m8):
+    def mod_3_depuracion(self, m1, m2, m8):
         c = self.config
         out = {}
         molienda = float(m1['OUT_RemolachaProcesada_th'])
@@ -213,7 +213,7 @@ def mod_3_depuracion(self, m1, m2, m8):
         
         return out
 
-def mod_6_casa_cocimiento(self, m1, m7):
+    def mod_6_casa_cocimiento(self, m1, m7):
         c = self.config
         out = {}
         molienda = float(m1.get('OUT_RemolachaProcesada_th', float(c['IN_Molienda_th'])))
@@ -307,6 +307,7 @@ def mod_6_casa_cocimiento(self, m1, m7):
             'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala
         })
         return out
+
     def mod_7_refundicion(self, m5, m3, m6):
         c = self.config
         out = {}
