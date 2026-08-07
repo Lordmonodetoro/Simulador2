@@ -11,796 +11,792 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# ====================================================================
-# CONFIGURACIÓN DE PÁGINA STREAMLIT
-# ====================================================================
+# Configuración general de la página en modo ancho
 st.set_page_config(
-    page_title="Gemelo Digital ACOR 2026 | Termodinámica Pura",
+    page_title="Simulador proceso Azucarera ACOR",
     page_icon="🏭",
     layout="wide"
 )
 
 # ====================================================================
-# CATÁLOGOS MAESTROS Y PROPIEDADES TERMODINÁMICAS
+# 0. CATÁLOGO MAESTRO DE VAPORES
 # ====================================================================
 CATALOGO_VAPORES = {
-    'Vapor_Escape': {'entalpia': 502.2},
-    'Vapor_1erEfecto': {'entalpia': 521.5},
-    'Vapor_2doEfecto': {'entalpia': 525.0},
-    'Vapor_3erEfecto': {'entalpia': 528.0},
-    'Vapor_4toEfecto': {'entalpia': 533.0},
-    'Vapor_5toEfecto': {'entalpia': 536.0},
-    'Vapor_6toEfecto': {'entalpia': 542.0},
-    'Vapor_Tachas_57C': {'entalpia': 565.0},
-    'Condensados_Deposito9635': {'entalpia': 94.0}
+    'Vapor_Escape': {'entalpia': 2200.0, 'tanque_destino': 'Calderas'},
+    'Vapor_1erEfecto': {'entalpia': 2210.0, 'tanque_destino': 'Calderas_4056'},
+    'Vapor_2doEfecto': {'entalpia': 2225.0, 'tanque_destino': 'Tanque_9635'},
+    'Vapor_3erEfecto': {'entalpia': 2255.0, 'tanque_destino': 'Tanque_9635'},
+    'Vapor_4toEfecto': {'entalpia': 2290.0, 'tanque_destino': 'Tanque_9635'},
+    'Vapor_5toEfecto': {'entalpia': 2315.0, 'tanque_destino': 'Tanque_9635'},
+    'Vapor_6toEfecto': {'entalpia': 2340.0, 'tanque_destino': 'Tanque_9635'},
+    'Vapor_V5_A609': {'entalpia': 2340.0, 'tanque_destino': 'Tanque_A.609'},
+    'Vapor_V6_94C': {'entalpia': 2275.0, 'tanque_destino': 'Tanque_A.AG6_WarmWater'},
+    'Vapor_Tachas_57C': {'entalpia': 2365.0, 'tanque_destino': 'Tanque_A.AG5_PanCondensate'},
+    'Condensado_A609_Sensible': {'entalpia': 179.3, 'tanque_destino': 'Tanque_A.AG6_WarmWater'},
+    'Condensados_Evaporacion': {'entalpia': 2200.0, 'tanque_destino': 'Retorno_Estacion_Condensados'}
 }
 
+LISTA_VAPORES = list(CATALOGO_VAPORES.keys())
+
 # ====================================================================
-# MOTOR MATEMÁTICO: BALANCES DE MASA Y ENERGÍA (TOTALMENTE ABIERTO)
+# MOTOR MATEMÁTICO ÍNTEGRO (MÓDULOS 1 AL 8)
 # ====================================================================
 class PlantaAzucareraCompleta:
-    def __init__(self, config):
-        self.config = config
-        self.cat_vap = CATALOGO_VAPORES
-        self.resultados = {}
-
-    def mod_1_difusiones(self):
-        c = self.config
-        out = {}
-
-        molienda = float(c['IN_Molienda_th'])
-        flujo_jugo = molienda * float(c['OP_DifPren_Ratio_Extraccion'])
-
-        fibra_seca_th = molienda * (float(c['IN_Marc_Fibra_pct']) / 100.0)
-        pulpa_prensada_th = fibra_seca_th / (float(c['OP_DifPren_MS_PulpaPrensada_pct']) / 100.0)
-
-        f_agua_pren = molienda * (float(c['OP_DifPren_Ratio_AguaPrensas_pct']) / 100.0)
-        f_recirc = molienda * (float(c['OP_DifPren_Ratio_Recirculacion_pct']) / 100.0)
-        f_desesp = molienda * (float(c['OP_DifPren_Ratio_Desespumador_pct']) / 100.0)
-
-        dt_17 = max(0.0, float(c['OP_DifPren_Int17_TempOut_C']) - float(c['OP_DifPren_Int17_TempIn_C']))
-        vap_17 = (f_agua_pren * 1.0 * dt_17) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-
-        dt_18_19 = max(0.0, float(c['OP_DifPren_Int18_19_TempOut_C']) - float(c['OP_DifPren_Int18_19_TempIn_C']))
-        vap_18_19 = (f_recirc * 1.0 * dt_18_19) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-
-        dt_20 = max(0.0, float(c['OP_DifPren_Int20_TempOut_C']) - float(c['OP_DifPren_Int20_TempIn_C']))
-        vap_20 = (f_desesp * 1.0 * dt_20) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-
-        # Almacenamiento de variables intermedias (Auditoría)
-        out['INT_Fibra_Seca_th'] = fibra_seca_th
-        out['INT_DT_Calentador17_C'] = dt_17
-        out['INT_DT_Calentador18_19_C'] = dt_18_19
-        out['INT_DT_Calentador20_C'] = dt_20
-
-        out.update({
-            'OUT_CanaProcesada_th': molienda,
-            'OUT_DifPren_JugoCrudo_Flujo_th': flujo_jugo,
-            'OUT_DifPren_JugoCrudo_DS_pct': 17.16,
-            'OUT_DifPren_JugoCrudo_Pureza_pct': float(c['IN_Pureza_Agricola_pct']),
-            'OUT_DifPren_JugoCrudo_Temp_C': float(c['OP_DifPren_Temp_JugoCrudo_C']),
-            'OUT_DifPren_PulpaPrensada_Secado_th': pulpa_prensada_th,
-            'OUT_DifPren_AguaPrensas_Flujo_th': f_agua_pren,
-            'OUT_DifPren_Recirculacion_Flujo_th': f_recirc,
-            'OUT_DifPren_Desespumador_Flujo_th': f_desesp,
-            'OUT_Calentador17_Vapor_th': vap_17,
-            'OUT_Calentador18_19_Vapor_th': vap_18_19,
-            'OUT_Calentador20_Vapor_th': vap_20,
-            'OUT_DifPren_Int18_19_Condensado_th': vap_18_19,
-            'OUT_DifPren_Int20_Condensado_th': vap_20
-        })
-        return out
-
-    def mod_2_calentamiento_crudo(self, m1):
-        c = self.config
-        out = {}
-        flujo_jugo = float(m1['OUT_DifPren_JugoCrudo_Flujo_th'])
-        ds_jugo = float(m1['OUT_DifPren_JugoCrudo_DS_pct'])
-        t_in = float(m1['OUT_DifPren_JugoCrudo_Temp_C'])
-
-        cp_jugo = 1.0 - (0.005 * ds_jugo)
-        out['INT_Cp_JugoCrudo_kcal_kgC'] = cp_jugo
-
-        rutas_vapor = {
-            '00': 'Vapor_Tachas_57C', '0': 'Vapor_Escape',
-            '1': 'Vapor_Escape', '2': 'Vapor_Escape', '3': 'Vapor_6toEfecto'
-        }
-
-        for eq in ['00', '0', '1', '2', '3']:
-            t_out = float(c[f'OP_CalCrudo_Int{eq}_TempOut_C'])
-            dt = max(0.0, t_out - t_in)
-            fuente = rutas_vapor[eq]
-            consumo_vap = (flujo_jugo * cp_jugo * dt) / self.cat_vap[fuente]['entalpia']
-
-            out[f'INT_DT_Calentador{eq}_C'] = dt
-            out[f'OUT_Calentador{eq}_Vapor_th'] = consumo_vap
-            t_in = t_out
-
-        out['OUT_CalCrudo_TempFinal_C'] = float(c.get('OP_CalCrudo_Int3a_TempOut_C', 59.0))
-        out['OUT_CalCrudo_FlujoSalida_th'] = flujo_jugo
-        out['OUT_CalCrudo_DS_Salida_pct'] = ds_jugo
-        return out
-
-    def mod_3_depuracion(self, m1, m2, m8):
-        c = self.config
-        out = {}
-        molienda = float(m1['OUT_CanaProcesada_th'])
-        f_escala = molienda / 445.0
-
-        flujo_jugo_entrada = float(m2['OUT_CalCrudo_FlujoSalida_th'])
-        brix_entrada = float(m2['OUT_CalCrudo_DS_Salida_pct'])
-        pureza_base = float(c['IN_Pureza_Agricola_pct'])
-
-        cp_jugo = 0.94
-        cp_agua = 1.00
-
-        # Extracción y Lechada
-        lodos_2do = 27.17 * f_escala
-        t_CaO_total = molienda * (float(c['OP_Depuracion_CaO_pct_remolacha']) / 100.0)
-        flujo_lechada_total = t_CaO_total / 0.1444
-        lechada_preencalado = flujo_lechada_total * 0.24
-        lechada_encalado_frio = flujo_lechada_total * 0.76
-
-        alc_1ra_caida = max(0.0, float(c['OP_1raCarb_AlcalinidadEntrada_gh']) - float(c['OP_1raCarb_AlcalinidadSalida']))
-        co2_1 = (flujo_jugo_entrada * alc_1ra_caida * (44.0/56.0)) / 1000.0
-        caco3_1ra = (flujo_jugo_entrada * alc_1ra_caida / 1000.0) * (100.0/56.0)
-
-        alc_2da_caida = max(0.0, float(c['OP_1raCarb_AlcalinidadSalida']) - float(c['OP_2daCarb_AlcalinidadSalida']))
-        cao_reacc_2da = (flujo_jugo_entrada * alc_2da_caida) / 1000.0
-        co2_2 = cao_reacc_2da * (44.0/56.0)
-
-        azucar_corefin = float(c['OP_AzucarCorefin_th']) * f_escala
-
-        flujo_etapa_1 = flujo_jugo_entrada + lodos_2do + lechada_preencalado
-        flujo_etapa_2 = flujo_etapa_1 + azucar_corefin + lechada_encalado_frio
-
-        t_in_3b = float(c['OP_Calent_3B_TempEntrada_C'])
-        t_out_3b = float(c['OP_Calent_3B_TempSalida_C'])
-        carga_3b_Mcal = flujo_etapa_2 * cp_jugo * max(0.0, t_out_3b - t_in_3b)
-
-        caudal_3b_condensados = float(m8.get('OUT_Intercambiador3B_2080_1_Calculado_th', 266.0 * f_escala))
-        t_cond_in_3b = float(m8.get('OUT_Deposito9635_TempSalida_C', 94.0))
-        t_cond_out_3b = t_cond_in_3b - (carga_3b_Mcal / (caudal_3b_condensados * cp_agua)) if caudal_3b_condensados > 0 else t_cond_in_3b
-
-        t_out_4 = float(c['OP_Calent_4_TempSalida_C'])
-        out['OUT_Calentador4_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_4 - t_out_3b)) / self.cat_vap['Vapor_6toEfecto']['entalpia']
-        t_out_56 = float(c['OP_Calent_56_TempSalida_C'])
-        out['OUT_Calentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-        t_out_7 = float(c['OP_Calent_7_TempSalida_C'])
-        out['OUT_Calentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
-
-        evap_agua_1ra = 1.75 * f_escala
-        vap_5_1ra_th = 0.29 * f_escala
-        flujo_etapa_3 = flujo_etapa_2 + co2_1 + vap_5_1ra_th - evap_agua_1ra
-        t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
-
-        ms_jugo_crudo = flujo_jugo_entrada * (brix_entrada / 100.0)
-        impurezas_removidas = ms_jugo_crudo * (1.0 - pureza_base/100.0) * 0.30
-        ms_barros_1ro = caco3_1ra + impurezas_removidas
-        barros_1ro = ms_barros_1ro / 0.20
-
-        jugo_claro = flujo_etapa_3 - barros_1ro
-
-        t_out_no8 = float(c['OP_Calent_No8_TempSalida_C'])
-        out['OUT_Calentador8_Vapor_th'] = (jugo_claro * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-        t_out_1ra_filt = t_out_no8 - float(c['OP_Enfriamiento_1raFiltracion_C'])
-
-        filtrato_pkf = 15.90 * f_escala
-        azucar_baja = 0.54 * f_escala
-        agua_lavado_filtros = 13.73 * f_escala
-
-        flujo_etapa_4 = jugo_claro + filtrato_pkf + azucar_baja + agua_lavado_filtros
-
-        t_out_no9 = float(c['OP_Calent_No9_TempSalida_C'])
-        out['OUT_Calentador9_Vapor_th'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
-        t_out_2da_carb = t_out_no9 - float(c['OP_Enfriamiento_2daCarb_C'])
-
-        evap_agua_2da = 0.80 * f_escala
-        flujo_etapa_5 = flujo_etapa_4 + co2_2 - evap_agua_2da
-
-        flujo_jugo_fino_total = flujo_etapa_5 - lodos_2do
-        perdidas_indef = molienda * 0.0016
-        flujo_jugo_fino_melting = flujo_jugo_fino_total * (float(c['OP_JugoFino_DestinoMelting_pct']) / 100.0)
-
-        flujo_jugo_fino_mod4 = max(0.1, flujo_jugo_fino_total - flujo_jugo_fino_melting - perdidas_indef)
-
-        ms_jugo_fino_real = ms_jugo_crudo + azucar_corefin - perdidas_indef - (ms_barros_1ro * 0.1)
-        brix_fino_real = (ms_jugo_fino_real / flujo_jugo_fino_total) * 100.0 if flujo_jugo_fino_total > 0 else 18.40
-
-        # Almacenamiento de variables intermedias
-        out['INT_Escala_Molienda'] = f_escala
-        out['INT_Flujo_Lechada_Total_th'] = flujo_lechada_total
-        out['INT_Lechada_Preencalado_th'] = lechada_preencalado
-        out['INT_Lechada_Encalado_th'] = lechada_encalado_frio
-        out['INT_CO2_1ra_Carb_th'] = co2_1
-        out['INT_CO2_2da_Carb_th'] = co2_2
-        out['INT_CaCO3_1ra_Carb_th'] = caco3_1ra
-        out['INT_Flujo_Etapa1_Preencalado_th'] = flujo_etapa_1
-        out['INT_Flujo_Etapa2_Encalado_th'] = flujo_etapa_2
-        out['INT_Carga_Calentador_3B_Mcal'] = carga_3b_Mcal
-        out['INT_Evaporacion_Agua_1raCarb_th'] = evap_agua_1ra
-        out['INT_Flujo_Etapa3_1raCarb_th'] = flujo_etapa_3
-        out['INT_MS_JugoCrudo_In_th'] = ms_jugo_crudo
-        out['INT_Impurezas_Removidas_th'] = impurezas_removidas
-        out['INT_MS_Barros_1ro_th'] = ms_barros_1ro
-        out['INT_Barros_1ro_th'] = barros_1ro
-        out['INT_Jugo_Claro_th'] = jugo_claro
-        out['INT_Agua_Lavado_Filtros_th'] = agua_lavado_filtros
-        out['INT_Filtrato_PKF_th'] = filtrato_pkf
-        out['INT_Flujo_Etapa4_1raFilt_th'] = flujo_etapa_4
-        out['INT_Evaporacion_Agua_2daCarb_th'] = evap_agua_2da
-        out['INT_Flujo_Etapa5_2daCarb_th'] = flujo_etapa_5
-        out['INT_Perdidas_Indefinidas_th'] = perdidas_indef
-        out['INT_JugoFino_Destino_Melting_th'] = flujo_jugo_fino_melting
-        out['INT_Masa_Seca_JugoFino_Real_th'] = ms_jugo_fino_real
-
-        out.update({
-            'OUT_Depuracion_CaO_Activo_th': t_CaO_total,
-            'OUT_1raCarb_Salida_th': flujo_etapa_3,
-            'OUT_2daCarb_Salida_th': flujo_etapa_5,
-            'OUT_2daFiltracion_LodosRecirc_th': lodos_2do,
-            'OUT_JugoFino_Total_th': flujo_jugo_fino_total,
-            'OUT_JugoFino_Brix_pct': brix_fino_real,
-            'OUT_JugoFino_Temp_C': t_out_2da_carb,
-            'OUT_JugoFino_ParaModulo4_Calentamiento_th': flujo_jugo_fino_mod4,
-            'OUT_Calent_3B_TempSalidaCondensado_C': t_cond_out_3b,
-            'OUT_Calentador4_Vapor_th': out['OUT_Calentador4_Vapor_th'],
-            'OUT_Calentador5_6_Vapor_th': out['OUT_Calentador5_6_Vapor_th'],
-            'OUT_Calentador7_Vapor_th': out['OUT_Calentador7_Vapor_th'],
-            'OUT_Calentador8_Vapor_th': out['OUT_Calentador8_Vapor_th'],
-            'OUT_Calentador9_Vapor_th': out['OUT_Calentador9_Vapor_th']
-        })
-        return out
-
-    def mod_4_calentamiento_jugo_fino(self, m3):
-        c = self.config
-        out = {}
-        cp_jugo = 0.96
-        out['INT_Cp_JugoFino_kcal_kgC'] = cp_jugo
-
-        flujo_jugo_fino = float(m3.get('OUT_JugoFino_ParaModulo4_Calentamiento_th', 500.0))
-        temp_entrada = float(m3.get('OUT_JugoFino_Temp_C', 87.3))
-
-        t_10 = float(c['OP_Calentador10_TempSalida_C'])
-        out['INT_DT_Calentador10_C'] = max(0.0, t_10 - temp_entrada)
-        out['OUT_Calentador10_Vapor_th'] = (flujo_jugo_fino * cp_jugo * out['INT_DT_Calentador10_C']) / self.cat_vap['Vapor_3erEfecto']['entalpia']
-
-        t_11_12 = float(c['OP_Calentador11_12_TempSalida_C'])
-        out['INT_DT_Calentadores11_12_C'] = max(0.0, t_11_12 - t_10)
-        v11_12 = (flujo_jugo_fino * cp_jugo * out['INT_DT_Calentadores11_12_C']) / self.cat_vap['Vapor_2doEfecto']['entalpia']
-        out['OUT_Calentador11_Vapor_th'] = v11_12 * 0.4
-        out['OUT_Calentador12_Vapor_th'] = v11_12 * 0.6
-
-        t_13 = float(c['OP_Calentador13_TempSalida_C'])
-        out['INT_DT_Calentador13_C'] = max(0.0, t_13 - t_11_12)
-        out['OUT_Calentador13_Vapor_th'] = (flujo_jugo_fino * cp_jugo * out['INT_DT_Calentador13_C']) / self.cat_vap['Vapor_1erEfecto']['entalpia']
-
-        t_14 = float(c['OP_Calentador14_TempSalida_C'])
-        out['INT_DT_Calentador14_C'] = max(0.0, t_14 - t_13)
-        out['OUT_Calentador14_Vapor_th'] = (flujo_jugo_fino * cp_jugo * out['INT_DT_Calentador14_C']) / self.cat_vap['Vapor_Escape']['entalpia']
-
-        out['OUT_JugoFinoCalentado_Flujo_th'] = flujo_jugo_fino
-        out['OUT_JugoFinoCalentado_Temp_C'] = t_14
-        return out
-
-    def mod_6_casa_cocimiento(self, m1, m5, m7):
-        c = self.config
-        out = {}
-        molienda = float(m1.get('OUT_CanaProcesada_th', float(c['IN_Molienda_th'])))
-        f_escala = molienda / 445.0
-
-        flujo_jarabe = float(m5.get('OUT_ThickJuice_Flujo_th', 133.39 * f_escala))
-        brix_jarabe = float(m5.get('OUT_ThickJuice_Brix_pct', 69.40))
-        solidos_in_thick_juice = flujo_jarabe * (brix_jarabe / 100.0)
-
-        P_thick = 91.60; P_sugA = 99.80; P_mol = 57.20
-        Solidos_Blanco = solidos_in_thick_juice * max(0.0, (P_thick - P_mol) / (P_sugA - P_mol)) if P_sugA != P_mol else 0.0
-        azucar_comercial_th = 72.50 * f_escala
-
-        brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
-        brix_b = float(c['OP_Cocimiento_BrixMasaB_pct'])
-        brix_c = float(c['OP_Cocimiento_BrixMasaC_pct'])
-
-        flujo_liq = float(m7.get('OUT_StandardLiquor_Flujo_th', 172.19 * f_escala))
-        brix_liq = float(m7.get('OUT_StandardLiquor_Brix_pct', 73.90))
-
-        S_in_A = flujo_liq * (brix_liq / 100.0)
-        P_liq = 93.5; P_greenA = 83.7
-        S_A = S_in_A * max(0.0, (P_liq - P_greenA) / (P_sugA - P_greenA)) if P_sugA != P_greenA else 0.0
-        Masa_A = S_in_A / (brix_a / 100.0) if brix_a > 0 else 0.0
-        Agua_feed_A = flujo_liq * (1.0 - brix_liq/100.0)
-        Agua_masa_A = Masa_A * (1.0 - brix_a/100.0)
-        vapor_tacha_a = max(0.0, Agua_feed_A - Agua_masa_A)
-
-        P_sugB = 98.7; P_greenB = 76.2
-        Flujo_in_B = (18.03 + 53.64) * f_escala
-        Masa_B = (Flujo_in_B * 0.787) / (brix_b / 100.0) if brix_b > 0 else 0.0
-        Agua_feed_B = Flujo_in_B * (1.0 - 0.787)
-        Agua_masa_B = Masa_B * (1.0 - brix_b/100.0)
-        vapor_tacha_b = max(0.0, Agua_feed_B - Agua_masa_B)
-
-        P_sugC = 96.7
-        Flujo_in_C = (29.77 + 1.44) * f_escala
-        Masa_C = (Flujo_in_C * 0.846) / (brix_c / 100.0) if brix_c > 0 else 0.0
-        Agua_feed_C = Flujo_in_C * (1.0 - 0.846)
-        Agua_masa_C = Masa_C * (1.0 - brix_c/100.0)
-        vapor_tacha_c = max(0.0, Agua_feed_C - Agua_masa_C)
-
-        out['INT_Solidos_ThickJuice_th'] = solidos_in_thick_juice
-        out['INT_Solidos_Blanco_Teorico_SJM_th'] = Solidos_Blanco
-        out['INT_Solidos_Entrada_TachaA_th'] = S_in_A
-        out['INT_Masa_Cocida_A_th'] = Masa_A
-        out['INT_Agua_Feed_TachaA_th'] = Agua_feed_A
-        out['INT_Agua_Masa_TachaA_th'] = Agua_masa_A
-        out['INT_Flujo_Entrada_TachaB_th'] = Flujo_in_B
-        out['INT_Masa_Cocida_B_th'] = Masa_B
-        out['INT_Flujo_Entrada_TachaC_th'] = Flujo_in_C
-        out['INT_Masa_Cocida_C_th'] = Masa_C
-
-        out.update({
-            'OUT_AzucarComercial_Silo_th': azucar_comercial_th,
-            'OUT_PolvoSecadero_Recuperado_th': 4.61 * f_escala,
-            'OUT_AzucarB_Fundicion_th': 32.48 * f_escala,
-            'OUT_AzucarB_Polarizacion_pct': P_sugB,
-
-            'OUT_Vapor4_Demanda_CristalizacionA_th': vapor_tacha_a,
-            'OUT_Vapor3_Demanda_CristalizacionB_th': vapor_tacha_b,
-            'OUT_Vapor4_Demanda_CristalizacionC_th': vapor_tacha_c,
-
-            'OUT_Vapor4_Demanda_Total_th': vapor_tacha_a + vapor_tacha_c,
-            'OUT_Vapor3_Demanda_Total_th': vapor_tacha_b,
-            'OUT_SecaderoAzucar_Vapor_th': 1.78 * f_escala,
-            'OUT_MelazaFinal_th': 23.08 * f_escala
-        })
-        return out
-
-    def mod_7_refundicion(self, m5, m3, m6):
-        c = self.config
-        out = {}
-
-        flujo_jarabe_evap_th = float(m5.get('OUT_ThickJuice_Flujo_th', 0.0))
-        brix_jarabe_evap = float(m5.get('OUT_ThickJuice_Brix_pct', 69.40))
-
-        flujo_jugo_fino_th = float(m3.get('OUT_JugoFino_Total_th', 0.0)) * (float(c['OP_JugoFino_DestinoMelting_pct'])/100.0)
-        brix_jugo_fino_pct = float(m3.get('OUT_JugoFino_Brix_pct', 18.40))
-
-        flujo_azucar_b_th = float(m6.get('OUT_AzucarB_Fundicion_th', 35.0))
-        pol_azucar_b = float(m6.get('OUT_AzucarB_Polarizacion_pct', 98.7))
-        flujo_polvo_secadero_th = float(m6.get('OUT_PolvoSecadero_Recuperado_th', 1.20))
-
-        ms_jarabe = flujo_jarabe_evap_th * (brix_jarabe_evap / 100.0)
-        ms_azucar_b = flujo_azucar_b_th * (pol_azucar_b / 100.0)
-        ms_polvo = flujo_polvo_secadero_th * 1.0
-        ms_jugo_fino = flujo_jugo_fino_th * (brix_jugo_fino_pct / 100.0)
-
-        masa_seca_total_th = ms_jarabe + ms_azucar_b + ms_polvo + ms_jugo_fino
-        flujo_total_entrante_th = flujo_jarabe_evap_th + flujo_azucar_b_th + flujo_polvo_secadero_th + flujo_jugo_fino_th
-
-        out['INT_Masa_Seca_Jarabe_th'] = ms_jarabe
-        out['INT_Masa_Seca_AzucarB_th'] = ms_azucar_b
-        out['INT_Masa_Seca_Polvo_th'] = ms_polvo
-        out['INT_Masa_Seca_JugoFino_th'] = ms_jugo_fino
-        out['INT_Flujo_Total_A_Melter_th'] = flujo_total_entrante_th
-
-        out['OUT_Refundicion_MasaSecaTotal_th'] = masa_seca_total_th
-
-        fuente_vapor = str(c.get('OP_Calentador15_Vapor_Fuente', 'Vapor_4toEfecto'))
-        temp_entrada_C = 89.6
-        temp_salida_C = 91.4
-        cp_licor = 0.85
-
-        calor_sensible_Mcal_h = flujo_total_entrante_th * cp_licor * max(0.0, temp_salida_C - temp_entrada_C)
-        vapor_requerido_th = calor_sensible_Mcal_h / self.cat_vap[fuente_vapor]['entalpia']
-        out['INT_Calor_Sensible_Melter_Mcal_h'] = calor_sensible_Mcal_h
-
-        out['OUT_Calentador15_VaporConsumo_th'] = vapor_requerido_th
-        out['OUT_Mod7_Resumen_Vapores_th'] = {fuente_vapor: vapor_requerido_th}
-
-        brix_liquor_estandar = 73.90
-        flujo_liquor_estandar_th = masa_seca_total_th / (brix_liquor_estandar / 100.0) if brix_liquor_estandar > 0 else 0.0
-
-        out['OUT_StandardLiquor_Flujo_th'] = flujo_liquor_estandar_th
-        out['OUT_StandardLiquor_Brix_pct'] = brix_liquor_estandar
-        out['OUT_StandardLiquor_Temp_C'] = temp_salida_C
-        return out
-
-    def mod_5_evaporacion(self, m4, m3, m6, m7, m1, m2):
-        c = self.config
-        out = {}
-
-        flujo_entrada = float(m4.get('OUT_JugoFinoCalentado_Flujo_th', 500.0))
-        temp_entrada = float(m4.get('OUT_JugoFinoCalentado_Temp_C', 123.8))
-        brix_entrada = float(m3.get('OUT_JugoFino_Brix_pct', 18.40))
-
-        if brix_entrada <= 0 or brix_entrada > 40: brix_entrada = 18.40
-
-        masa_seca_th = flujo_entrada * (brix_entrada / 100.0)
-        brix_salida_obj = float(c['OP_Evaporacion_BrixSalida_objetivo_pct'])
-        flujo_jarabe_th = masa_seca_th / (brix_salida_obj / 100.0) if brix_salida_obj > 0 else 0.0
-
-        W = max(1.0, flujo_entrada - flujo_jarabe_th)
-
-        out['INT_Masa_Seca_Entrada_Evap_th'] = masa_seca_th
-        out['INT_Agua_Total_A_Evaporar_W_th'] = W
-
-        out['OUT_ThickJuice_Flujo_th'] = flujo_jarabe_th
-        out['OUT_Evaporacion_AguaTotalEvaporada_th'] = W
-
-        temp_vap = [131.0, 126.4, 120.2, 112.4, 106.5, 94.0]
-        temp_jugo = [131.6, 127.3, 122.2, 116.5, 110.8, 99.5]
-        L = [521.5, 525.0, 528.0, 533.0, 536.0, 542.0]
-        cp_jugo = 0.94
-        cp_agua = 1.00
-        SANGRIA = 0.30
-
-        dem_m7 = m7.get('OUT_Mod7_Resumen_Vapores_th', {})
-        D = [0.0]*6
-        D[0] = float(m4.get('OUT_Calentador13_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_1erEfecto', 0.0)) + SANGRIA
-        D[1] = float(m4.get('OUT_Calentador11_Vapor_th', 0.0)) + float(m4.get('OUT_Calentador12_Vapor_th', 0.0)) + float(dem_m7.get('Vapor_2doEfecto', 0.0)) + SANGRIA
-        D[2] = float(m4.get('OUT_Calentador10_Vapor_th', 0.0)) + float(m3.get('OUT_Calentador9_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 0.0)) + float(dem_m7.get('Vapor_3erEfecto', 0.0)) + SANGRIA
-        D[3] = float(m3.get('OUT_Calentador7_Vapor_th', 0.0)) + float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 0.0)) + float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 0.0)) + float(dem_m7.get('Vapor_4toEfecto', 0.0)) + SANGRIA
-        D[4] = float(m3.get('OUT_Calentador5_6_Vapor_th', 0.0)) + float(m3.get('OUT_Calentador8_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador17_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador18_19_Vapor_th', 0.0)) + float(m1.get('OUT_Calentador20_Vapor_th', 0.0)) + (0.29 * (float(c['IN_Molienda_th'])/445.0)) + SANGRIA
-        D[5] = float(m2.get('OUT_Calentador00_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador0_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador1_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador2_Vapor_th', 0.0)) + float(m2.get('OUT_Calentador3_Vapor_th', 0.0)) + SANGRIA
-
-        out['INT_Demanda_Externa_Vapores_th'] = {f"Ef_{i+1}": float(D[i]) for i in range(6)}
-
-        def simular_cascada(E0):
-            E = [0.0]*6
-            V_tot = [0.0]*6
-            Cond = [0.0]*6
-            F_j = [0.0]*6
-            Flash_c = [0.0]*6
-            Flash_j = [0.0]*6
-
-            E[0] = E0
-            V_tot[0] = E[0]
-            Cond[0] = E[0]
-            F_j[0] = max(0.1, flujo_entrada - E[0])
-
-            for i in range(1, 6):
-                V_in = max(0.0, V_tot[i-1] - D[i-1])
-                Q_cond = V_in * L[i-1]
-                Q_j = F_j[i-1] * cp_jugo * max(0.0, temp_jugo[i-1] - temp_jugo[i])
-
-                E[i] = (Q_cond + Q_j) / L[i]
-                Flash_j[i] = Q_j / L[i]
-                Flash_c[i] = (Cond[i-1] * cp_agua * max(0.0, temp_vap[i-1] - temp_vap[i])) / L[i]
-
-                V_tot[i] = E[i] + Flash_c[i] + Flash_j[i]
-                F_j[i] = max(0.1, F_j[i-1] - E[i] - Flash_j[i])
-
-                extr = 5.08 * (W / 369.46) if i == 1 else 0.0
-                Cond[i] = max(0.0, Cond[i-1] - extr) + V_in - Flash_c[i]
-
-            W_calc = sum(E) + sum(Flash_j)
-            return W_calc, E, V_tot, Cond, F_j, Flash_c, Flash_j
-
-        low, high = 0.0, W * 3.0
-        for _ in range(100):
-            mid = (low + high) / 2.0
-            sum_e_calc, E, V_tot, Cond, F_j, Flash_c, Flash_j = simular_cascada(mid)
-            if sum_e_calc < W:
-                low = mid
-            else:
-                high = mid
-
-        _, E, V_tot, Cond, F_j, Flash_c, Flash_j = simular_cascada(mid)
-
-        out['INT_Evaporacion_Efectiva_E_th'] = {f"Ef_{i+1}": float(E[i]) for i in range(6)}
-        out['INT_Generacion_Flash_Jugo_th'] = {f"Ef_{i+1}": float(Flash_j[i]) for i in range(6)}
-        out['INT_Generacion_Flash_Condensado_th'] = {f"Ef_{i+1}": float(Flash_c[i]) for i in range(6)}
-        out['INT_Flujo_Jugo_Saliente_Fj_th'] = {f"Ef_{i+1}": float(F_j[i]) for i in range(6)}
-        out['INT_Condensados_Acumulados_th'] = {f"Ef_{i+1}": float(Cond[i]) for i in range(6)}
-
-        out['OUT_Condensados_Calderas4056_th'] = float(Cond[0])
-        out['OUT_Condensado_CascadaFinal_9635_th'] = float(Cond[5])
-
-        out['OUT_Balance_Vapores_Demanda'] = {
-            'Vapor_1erEfecto': float(D[0]), 'Vapor_2doEfecto': float(D[1]), 'Vapor_3erEfecto': float(D[2]),
-            'Vapor_4toEfecto': float(D[3]), 'Vapor_5toEfecto': float(D[4]), 'Vapor_6toEfecto': float(D[5])
-        }
-
-        out['OUT_Mod5_OfertaTotalVapores_th'] = {
-            'Vapor_1erEfecto': float(V_tot[0]), 'Vapor_2doEfecto': float(V_tot[1]), 'Vapor_3erEfecto': float(V_tot[2]),
-            'Vapor_4toEfecto': float(V_tot[3]), 'Vapor_5toEfecto': float(V_tot[4]), 'Vapor_6toEfecto': float(V_tot[5])
-        }
-
-        out['OUT_Bypass_2Efecto_th'] = max(0.0, float(D[0] - V_tot[0]))
-        out['OUT_Bypass_3Efecto_th'] = max(0.0, float(D[1] - V_tot[1]))
-        out['OUT_Bypass_4Efecto_th'] = max(0.0, float(D[2] - V_tot[2]))
-        out['OUT_Bypass_5Efecto_th'] = max(0.0, float(D[3] - V_tot[3]))
-
-        q_sens = (flujo_entrada * cp_jugo * max(0.0, temp_jugo[0] - temp_entrada))
-        q_lat = (E[0] * L[0])
-
-        out['INT_Calor_Sensible_1erEfecto_Mcal'] = q_sens
-        out['INT_Calor_Latente_1erEfecto_Mcal'] = q_lat
-        out['OUT_VaporCalderas_1erEfecto_th'] = float((q_sens + q_lat) / self.cat_vap['Vapor_Escape']['entalpia'])
-
-        return out
-
-    def mod_8_condensados_agua(self, m5, m6, m4, m3, m1, m2, m7):
-        out = {}
-        c = self.config
-        recalentador_15_vapor_th = float(m7.get('OUT_Calentador15_VaporConsumo_th', 0.48))
-        cond_cascada_evaporacion = float(m5.get('OUT_Condensado_CascadaFinal_9635_th', 246.50))
-
-        fuentes_9635 = [
-            {'nombre': 'Condensado Evaporación Cascado', 'flujo_th': cond_cascada_evaporacion},
-            {'nombre': 'Recalentador Nº 7 (M3)', 'flujo_th': float(m3.get('OUT_Calentador7_Vapor_th', 0.0))},
-            {'nombre': 'Recalentador Nº 10 (M4)', 'flujo_th': float(m4.get('OUT_Calentador10_Vapor_th', 26.44))},
-            {'nombre': 'Recalentador Nº 11 (M4)', 'flujo_th': float(m4.get('OUT_Calentador11_Vapor_th', 1.25))},
-            {'nombre': 'Recalentador Nº 12 (M4)', 'flujo_th': float(m4.get('OUT_Calentador12_Vapor_th', 1.92))},
-            {'nombre': 'Recalentador Nº 13 (M4)', 'flujo_th': float(m4.get('OUT_Calentador13_Vapor_th', 1.98))},
-            {'nombre': 'Calentador Nº 9 (M3)', 'flujo_th': float(m3.get('OUT_Calentador9_Vapor_th', 6.32))},
-            {'nombre': 'Calentador Nº 4 (M3)', 'flujo_th': float(m3.get('OUT_Calentador4_Vapor_th', 16.08))},
-            {'nombre': 'Calentadores Nº 5+6 (M3)', 'flujo_th': float(m3.get('OUT_Calentador5_6_Vapor_th', 5.32))},
-            {'nombre': 'Calentador Nº 8 (M3)', 'flujo_th': float(m3.get('OUT_Calentador8_Vapor_th', 0.29))},
-            {'nombre': 'Agua Prensa Difusión Nº 17 (M1)', 'flujo_th': float(m1.get('OUT_Calentador17_Vapor_th', 3.04))},
-        ]
-        total_9635 = sum(item['flujo_th'] for item in fuentes_9635)
-        flash_9635 = total_9635 * 0.02
-        neto_liquido_9635 = total_9635 - flash_9635
-
-        scrubber_th = float(m1.get('OUT_CanaProcesada_th', 445.0)) * (12.0 / 445.0)
-        intercambiador_3b_2080_1 = max(0.0, neto_liquido_9635 - scrubber_th)
-
-        fuentes_9620 = [
-            {'nombre': 'Tachas B', 'flujo_th': float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 9.84))},
-            {'nombre': 'Tachas A', 'flujo_th': float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 33.14))},
-            {'nombre': 'Tachas C', 'flujo_th': float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 5.83))},
-            {'nombre': 'Recalentador Nº 15', 'flujo_th': recalentador_15_vapor_th},
-            {'nombre': 'Secadero Azúcar', 'flujo_th': float(m6.get('OUT_SecaderoAzucar_Vapor_th', 1.78))},
-            {'nombre': 'Int. 18+19 (M1)', 'flujo_th': float(m1.get('OUT_Calentador18_19_Vapor_th', 2.35))},
-            {'nombre': 'Int. 20 (M1)', 'flujo_th': float(m1.get('OUT_Calentador20_Vapor_th', 1.83))}
-        ]
-        total_9620 = sum(item['flujo_th'] for item in fuentes_9620)
-        flash_9620 = total_9620 * 0.05
-        neto_liquido_9620 = total_9620 - flash_9620
-
-        flujo_total_4605 = neto_liquido_9620 + intercambiador_3b_2080_1
-
-        out['INT_Total_Bruto_9635_th'] = total_9635
-        out['INT_Flash_Perdido_9635_th'] = flash_9635
-        out['INT_Consumo_Scrubber_th'] = scrubber_th
-        out['INT_Total_Bruto_9620_th'] = total_9620
-        out['INT_Flash_Perdido_9620_th'] = flash_9620
-
-        out.update({
-            'OUT_Deposito9635_FlujoTotal_th': total_9635,
-            'OUT_Deposito9635_FlujoNetoLiquido_th': neto_liquido_9635,
-            'OUT_Intercambiador3B_2080_1_Calculado_th': intercambiador_3b_2080_1,
-            'OUT_Deposito9620_FlujoTotal_th': total_9620,
-            'OUT_Deposito9620_FlujoNetoLiquido_th': neto_liquido_9620,
-            'OUT_Deposito4056_4605_Flujo_th': flujo_total_4605,
-            'OUT_Condensados_Totales_th': total_9635 + total_9620 + float(m5.get('OUT_Condensados_Calderas4056_th', 107.73))
-        })
-        return out
-
-    def mod_9_energia(self, m1, m4, m5, m6):
-        c = self.config
-        out = {}
-
-        pulpa = float(m1.get('OUT_DifPren_PulpaPrensada_Secado_th', 0.0))
-        ms_pulpa_th = pulpa * (float(c['OP_DifPren_MS_PulpaPrensada_pct']) / 100.0)
-        pellet = ms_pulpa_th / ((100.0 - float(c['OP_Pulpa_HumedadPellet_pct'])) / 100.0) if c['OP_Pulpa_HumedadPellet_pct'] < 100.0 else 0.0
-        agua_evap_sec = max(0.0, pulpa - pellet)
-
-        rend_termico = float(c['OP_SecaderoPulpa_RendimientoTérmico_pct']) / 100.0
-        gas_m3h = (agua_evap_sec * 1000.0 * 1.05) / (float(c['OP_SecaderoPulpa_PCI_Gas_kWh_m3']) * rend_termico) if rend_termico > 0.0 else 0.0
-
-        vapor_calderas = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0)) + float(m4.get('OUT_Calentador14_Vapor_th', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
-        mw_elec = (vapor_calderas * float(c['OP_Turbina_ConsumoEspecifico_kWh_tVapor'])) / 1000.0
-
-        out['INT_MS_Pulpa_Prensada_th'] = ms_pulpa_th
-        out['INT_Rendimiento_Termico_Secadero_Factor'] = rend_termico
-
-        out.update({
-            'OUT_PelletPulpa_Producido_th': pellet,
-            'OUT_SecaderoPulpa_AguaEvaporada_th': agua_evap_sec,
-            'OUT_SecaderoPulpa_GasNatural_m3h': gas_m3h,
-            'OUT_Caldera_VaporVivoTotal_th': vapor_calderas,
-            'OUT_Cogeneracion_PotenciaElectrica_MW': mw_elec,
-            'OUT_KPI_VaporSobreRemolacha_pct': (vapor_calderas / float(c['IN_Molienda_th'])) * 100.0 if float(c['IN_Molienda_th']) > 0 else 0.0,
-            'OUT_KPI_RendimientoAzucar_pct': (float(m6.get('OUT_AzucarComercial_Silo_th', 0.0)) / float(c['IN_Molienda_th'])) * 100.0 if float(c['IN_Molienda_th']) > 0 else 0.0
-        })
-        return out
+    def __init__(self, config=None):
+        self.config = config if config else {}
 
     def simular(self):
-        m1 = self.mod_1_difusiones()
-        m2 = self.mod_2_calentamiento_crudo(m1)
-        m8_init = {}
-        m3_init = self.mod_3_depuracion(m1, m2, m8_init)
-        m4_init = self.mod_4_calentamiento_jugo_fino(m3_init)
+        cfg = self.config
+        cat_vap = CATALOGO_VAPORES
+        res = {}
 
-        m7_pre = self.mod_7_refundicion({}, m3_init, {})
-        m6_pre = self.mod_6_casa_cocimiento(m1, {}, m7_pre)
-        m5_init = self.mod_5_evaporacion(m4_init, m3_init, m6_pre, m7_pre, m1, m2)
-        m8_init = self.mod_8_condensados_agua(m5_init, m6_pre, m4_init, m3_init, m1, m2, m7_pre)
+        molienda = cfg['Molienda t/h']
+        f_escala = molienda / 445.0
 
-        m3 = self.mod_3_depuracion(m1, m2, m8_init)
-        m4 = self.mod_4_calentamiento_jugo_fino(m3)
-        m6_init = self.mod_6_casa_cocimiento(m1, m5_init, m7_pre)
-        m7_pre_2 = self.mod_7_refundicion(m5_init, m3, m6_init)
+        # =========================================================
+        # MÓDULO 1: DIFUSIÓN Y PRENSAS
+        # =========================================================
+        flujo_jugo_verde = molienda * cfg['Draft']
+        solidos_sacarosa = molienda * (cfg['Riqueza_Remolacha'] / cfg['Pureza_Agricola']) * 0.98
+        ds_jugo_verde = (solidos_sacarosa / flujo_jugo_verde) * 100.0 if flujo_jugo_verde > 0 else 0
+        pur_verde = cfg['Pureza_Agricola']
+        pulpa_prensada_secado = (molienda * (cfg['Marco_Remolacha']/100.0)) / (cfg['MS_PulpaPrensada']/100.0)
 
-        m6 = self.mod_6_casa_cocimiento(m1, m5_init, m7_pre_2)
-        m7 = self.mod_7_refundicion(m5_init, m3, m6)
-        m5 = self.mod_5_evaporacion(m4, m3, m6, m7, m1, m2)
-        m8 = self.mod_8_condensados_agua(m5, m6, m4, m3, m1, m2, m7)
-        m9 = self.mod_9_energia(m1, m4, m5, m6)
+        flujo_agua_total = molienda * (cfg['% Ratio_Agua_Aporte'] / 100.0)
+        agua_aporte_cal = flujo_agua_total * (cfg['OP_DifPren_Mezcla_AguaCaliente_pct'] / 100.0)
+        agua_aporte_rio = flujo_agua_total - agua_aporte_cal
 
-        # Casteo riguroso de Python Floats
-        for modulo in [m1, m2, m3, m4, m5, m6, m7, m8, m9]:
-            for k, v in modulo.items():
-                if isinstance(v, (int, float, np.floating)):
-                    modulo[k] = round(float(v), 2)
-                elif isinstance(v, dict):
-                    for k2, v2 in v.items():
-                        if isinstance(v2, (int, float, np.floating)):
-                            v[k2] = round(float(v2), 2)
+        f_agua_pren = molienda * (cfg['OP_DifPren_Ratio_AguaPrensas_pct']/100.0)
+        f_recirc = molienda * (cfg['OP_DifPren_Ratio_Recirculacion_pct']/100.0)
+        f_desesp = molienda * (cfg['OP_DifPren_Ratio_Desespumador_pct']/100.0)
 
-        self.resultados = {'M1': m1, 'M2': m2, 'M3': m3, 'M4': m4, 'M5': m5, 'M6': m6, 'M7': m7, 'M8': m8, 'M9': m9}
-        return self.resultados
+        dt_17 = cfg['OP_DifPren_Int17_Tª Salida_C'] - cfg['Intercambiador 17_Tª Entrada_C']
+        fuente_17 = cfg['OP_DifPren_Int17_FuenteVapor']
+        demanda_v17 = (f_agua_pren * 4.05 * dt_17) / cat_vap[fuente_17]['entalpia']
+
+        dt_18_19 = cfg['OP_DifPren_Int18_19_TempOut_C'] - cfg['OP_DifPren_Int18_19_TempIn_C']
+        fuente_18_19 = cfg['OP_DifPren_Int18_19_FuenteVapor']
+        demanda_v18_19 = (f_recirc * 3.95 * dt_18_19) / cat_vap[fuente_18_19]['entalpia']
+
+        dt_20 = cfg['OP_DifPren_Int20_TempOut_C'] - cfg['OP_DifPren_Int20_TempIn_C']
+        fuente_20 = cfg['OP_DifPren_Int20_FuenteVapor']
+        demanda_v20 = (f_desesp * 4.10 * dt_20) / cat_vap[fuente_20]['entalpia']
+
+        res['M1'] = {
+            'OUT_CanaProcesada_th': molienda,
+            'OUT_Jugo_Verde_Flujo_th': round(flujo_jugo_verde, 2),
+            'OUT_Jugo_Verde_Brix_pct': round(ds_jugo_verde, 2),
+            'OUT_Jugo_Verde_Pureza_pct': round(pur_verde, 2),
+            'OUT_DifPren_PulpaPrensada_th': round(pulpa_prensada_secado, 2),
+            'OUT_DifPren_AguaAporte_Total_th': round(flujo_agua_total, 2),
+            'OUT_DifPren_Int17_DemandaVapor_th': round(demanda_v17, 2),
+            'OUT_DifPren_Int18_19_DemandaVapor_th': round(demanda_v18_19, 2),
+            'OUT_DifPren_Int20_DemandaVapor_th': round(demanda_v20, 2)
+        }
+
+        # =========================================================
+        # MÓDULO 2: CALENTAMIENTO JUGO VERDE
+        # =========================================================
+        cp_jugo_verde = 4.18 - (0.023 * ds_jugo_verde)
+        t_in = cfg['Tª_Jugo_Verde']
+        m2_out = {}
+
+        for eq in ['00', '0', '1', '2', '3']:
+            t_out = cfg[f'OP_Cal_Verde_Int{eq}_TempOut_C']
+            dt = max(0.0, t_out - t_in)
+            fuente = cfg[f'OP_Cal_Verde_Int{eq}_FuenteVapor']
+            h_eq = cat_vap.get(fuente, cat_vap['Vapor_Escape'])['entalpia']
+            dem_v = (flujo_jugo_verde * cp_jugo_verde * dt) / h_eq
+            m2_out[f'OUT_Cal_Verde_Int{eq}_DemandaVapor_th'] = round(dem_v, 2)
+            t_in = t_out
+
+        t_out_3a = cfg['OP_Cal_Verde_Int3a_TempOut_C']
+        dt_3a = max(0.0, t_out_3a - t_in)
+        fuente_3a = cfg['OP_Cal_Verde_Int3a_FuenteVapor']
+        h_3a = cat_vap.get(fuente_3a, cat_vap['Condensado_A609_Sensible'])['entalpia']
+        demanda_liq = (flujo_jugo_verde * cp_jugo_verde * dt_3a) / h_3a
+        m2_out['OUT_Cal_Verde_Int3a_DemandaLíquido_th'] = round(demanda_liq, 2)
+        m2_out['OUT_Cal_Verde_TempFinal_C'] = round(t_out_3a, 2)
+        m2_out['OUT_Cal_Verde_FlujoSalida_th'] = round(flujo_jugo_verde, 2)
+        m2_out['OUT_Cal_Verde_Brix_pct'] = round(ds_jugo_verde, 2)
+        m2_out['OUT_Cal_Verde_Pureza_pct'] = round(pur_verde, 2)
+        res['M2'] = m2_out
+
+        # =========================================================
+        # MÓDULO 3: DEPURACIÓN Y TREN TÉRMICO (BALANCE EXACTO)
+        # =========================================================
+        cp_j = cfg['OP_CalorEspecifico_Jugo_kWh_tC']
+        cao_activo = molienda * (cfg['OP_Depuracion_CaO_pct_remolacha'] / 100.0)
+
+        # Etapa Preencalado
+        lodos_2do = 27.17 * f_escala
+        lechada_tot = cao_activo + (33.77 * f_escala)
+        flujo_pre = flujo_jugo_verde + lodos_2do + (lechada_tot * (9.47/39.47))
+        ms_pre = (flujo_jugo_verde * (ds_jugo_verde / 100.0)) + (cao_activo * 0.5)
+        brix_pre = (ms_pre / flujo_pre) * 100.0
+
+        # Etapa Encalado Frío
+        azucar_corefin = cfg['OP_AzucarCorefin_th'] * f_escala
+        flujo_post_pre = flujo_pre + azucar_corefin
+        ms_post_pre = ms_pre + (azucar_corefin * 0.998)
+
+        flujo_enc_frio = flujo_post_pre + (lechada_tot * (30.00/39.47))
+        ms_frio = ms_post_pre + (cao_activo * 0.5)
+        brix_frio = (ms_frio / flujo_enc_frio) * 100.0
+        pur_frio = pur_verde + 1.2
+
+        # Tren Térmico (3B al 7)
+        def calc_v_m3(t_out_key, t_in, flujo, cp, fuente_key):
+            t_out = cfg[t_out_key]
+            carga = flujo * cp * max(0.0, t_out - t_in)
+            fuente = cfg[fuente_key]
+            demanda = carga / cat_vap[fuente]['entalpia']
+            return t_out, carga, demanda, fuente
+
+        t_out_3b, c_3b, vap_3b, f_3b = calc_v_m3('OP_Calent_3B_TempSalida_C', cfg['OP_Calent_3B_TempEntrada_C'], flujo_enc_frio, cp_j, 'OP_Vapor_Calentador_3B')
+        t_out_4, c_4, vap_4, f_4 = calc_v_m3('OP_Calent_4_TempSalida_C', t_out_3b, flujo_enc_frio, cp_j, 'OP_Vapor_Calentador_4')
+        t_out_56, c_56, vap_56, f_56 = calc_v_m3('OP_Calent_56_TempSalida_C', t_out_4, flujo_enc_frio, cp_j, 'OP_Vapor_Calentador_56')
+        t_out_7, c_7, vap_7, f_7 = calc_v_m3('OP_Calent_7_TempSalida_C', t_out_56, flujo_enc_frio, cp_j, 'OP_Vapor_Calentador_7')
+
+        # 1ra Carbonatación
+        co2_1 = 4.48 * f_escala
+        evap_1 = 1.75 * f_escala
+        flujo_react_1ra = flujo_enc_frio + co2_1 - evap_1
+        t_out_1ra = t_out_7 - cfg['OP_Enfriamiento_1raCarb_C']
+
+        # 1ra Filtración -> Aquí se separan los barros de 1ª
+        barros_1ra = 55.90 * f_escala
+        flujo_jugo_claro = flujo_react_1ra - barros_1ra
+        brix_claro = brix_frio * 0.98
+        pur_claro = pur_verde + 2.0
+
+        # PKF y Calentadores 8 y 9
+        filtrato_pkf = 15.90 * f_escala
+        barros_pkf = 17.70 * f_escala
+        agua_lavado_filtros = 11.47 * f_escala
+
+        azucar_baja = 0.54 * f_escala
+        perdidas_indef = 0.70 * f_escala
+        flujo_turbio_hacia_8 = flujo_jugo_claro + filtrato_pkf + azucar_baja - perdidas_indef
+
+        t_out_no8, c_no8, vap_no8, f_no8 = calc_v_m3('OP_Calent_No8_TempSalida_C', t_out_1ra, flujo_turbio_hacia_8, cp_j, 'OP_Vapor_Calentador_No8')
+        t_out_1ra_filt = t_out_no8 - cfg['OP_Enfriamiento_1raFiltracion_C']
+        t_out_no9, c_no9, vap_no9, f_no9 = calc_v_m3('OP_Calent_No9_TempSalida_C', t_out_1ra_filt, flujo_turbio_hacia_8, cp_j, 'OP_Vapor_Calentador_No9')
+
+        # 2da Carbonatación
+        co2_2 = 0.10 * f_escala
+        evap_2 = 0.80 * f_escala
+        t_out_2da = t_out_no9 - cfg['OP_Enfriamiento_2daCarb_C']
+        flujo_react_2da = flujo_turbio_hacia_8 + co2_2 - evap_2
+
+        # 2da Filtración
+        flujo_jugo_fino_total = flujo_react_2da - lodos_2do
+        brix_fino = 18.40
+        pur_fino = 91.60
+
+        # Melting
+        pct_melting = cfg['OP_JugoFino_DestinoMelting_pct']
+        flujo_jugo_fino_melting = 1.66 * f_escala if pct_melting == 0.0 else flujo_jugo_fino_total * (pct_melting / 100.0)
+        flujo_jugo_fino_mod4 = flujo_jugo_fino_total - flujo_jugo_fino_melting
+
+        res['M3'] = {
+            'OUT_Depuracion_JugoCrudo_Flujo_th': round(flujo_jugo_verde, 2),
+            'OUT_EncaladoFrio_Salida_Flujo_th': round(flujo_enc_frio, 2),
+            'OUT_EncaladoFrio_Salida_Brix_pct': round(brix_frio, 2),
+            'OUT_1raCarb_Salida_Flujo_th': round(flujo_react_1ra, 2),
+            'OUT_Barros_1raFilt_Flujo_th': round(barros_1ra, 2),
+            'OUT_JugoClaro_Flujo_th': round(flujo_jugo_claro, 2),
+            'OUT_JugoClaro_Brix_pct': round(brix_claro, 2),
+            'OUT_JugoClaro_Pureza_pct': round(pur_claro, 2),
+            'OUT_JugoFino_Total_Flujo_th': round(flujo_jugo_fino_total, 2),
+            'OUT_JugoFino_Total_Brix_pct': round(brix_fino, 2),
+            'OUT_JugoFino_Total_Pureza_pct': round(pur_fino, 2),
+            'OUT_JugoFino_ParaModulo4_Flujo_th': round(flujo_jugo_fino_mod4, 2),
+            '_vap_3b': vap_3b, '_vap_4': vap_4, '_vap_56': vap_56, '_vap_7': vap_7, '_vap_no8': vap_no8, '_vap_no9': vap_no9,
+            '_f_3b': f_3b, '_f_4': f_4, '_f_56': f_56, '_f_7': f_7, '_f_no8': f_no8, '_f_no9': f_no9,
+            '_pkf_agua': agua_lavado_filtros
+        }
+
+        # =========================================================
+        # MÓDULO 4: CALENTAMIENTO JUGO FINO
+        # =========================================================
+        flujo_jf_m4 = res['M3']['OUT_JugoFino_ParaModulo4_Flujo_th']
+        temp_ent_m4 = t_out_2da
+        cp_jf = cfg['OP_CalorEspecifico_JugoFino_kWh_tC']
+
+        def calc_v_m4(t_out_key, t_in, fuente_key):
+            t_out = cfg[t_out_key]
+            carga = flujo_jf_m4 * cp_jf * max(0.0, t_out - t_in)
+            fuente = cfg[fuente_key]
+            demanda = carga / cat_vap[fuente]['entalpia']
+            return t_out, carga, demanda, fuente
+
+        t_out_10, c_10, vap_10, f_10 = calc_v_m4('OP_Calentador10_TempSalida_C', temp_ent_m4, 'OP_Vapor_Calentador10')
+        t_out_11_12, c_11_12, vap_11_12, f_11_12 = calc_v_m4('OP_Calentador11_12_TempSalida_C', t_out_10, 'OP_Vapor_Calentador11_12')
+        t_out_13, c_13, vap_13, f_13 = calc_v_m4('OP_Calentador13_TempSalida_C', t_out_11_12, 'OP_Vapor_Calentador13')
+        t_out_14, c_14, vap_14, f_14 = calc_v_m4('OP_Calentador14_TempSalida_C', t_out_13, 'OP_Vapor_Calentador14')
+
+        res['M4'] = {
+            'OUT_JugoFinoCalentado_Flujo_th': round(flujo_jf_m4, 2),
+            'OUT_JugoFinoCalentado_Temp_C': round(t_out_14, 2),
+            'OUT_JugoFinoCalentado_Brix_pct': round(brix_fino, 2),
+            'OUT_JugoFinoCalentado_Pureza_pct': round(pur_fino, 2),
+            'OUT_Calent10_Vapor_th': round(vap_10, 2),
+            'OUT_Calent11_12_Vapor_th': round(vap_11_12, 2),
+            'OUT_Calent13_Vapor_th': round(vap_13, 2),
+            'OUT_Calent14_Vapor_th': round(vap_14, 2),
+            '_vap_10': vap_10, '_vap_11_12': vap_11_12, '_vap_13': vap_13, '_vap_14': vap_14,
+            '_f_10': f_10, '_f_11_12': f_11_12, '_f_13': f_13, '_f_14': f_14
+        }
+
+        # =========================================================
+        # MÓDULO 6: CASA DE COCIMIENTO Y CRISTALIZACIÓN
+        # =========================================================
+        brix_a = cfg['OP_Cocimiento_BrixMasaA_pct']
+        brix_b = cfg['OP_Cocimiento_BrixMasaB_pct']
+        brix_c = cfg['OP_Cocimiento_BrixMasaC_pct']
+
+        # E0
+        flujo_liq = 172.19 * f_escala
+        brix_liq, pur_liq, t_liq = 73.90, 93.50, 89.7
+        flujo_miel_a = 16.03 * f_escala
+        brix_miel_a, pur_miel_a, t_miel_a = 78.00, 87.40, 79.8
+        ds_5050 = (flujo_liq * brix_liq/100) + (flujo_miel_a * brix_miel_a/100)
+        sug_5050 = (flujo_liq * brix_liq/100 * pur_liq/100) + (flujo_miel_a * brix_miel_a/100 * pur_miel_a/100)
+        flujo_5050 = flujo_liq + flujo_miel_a
+        brix_5050 = (ds_5050/flujo_5050)*100
+        pur_5050 = (sug_5050/ds_5050)*100
+
+        # E1
+        vap_tacha_a = 33.14 * f_escala
+        masa_a_flujo = ds_5050 / (brix_a / 100.0)
+
+        # E2
+        azucar_a_th = 77.11 * f_escala
+        miel_verde_a = 64.14 * f_escala
+        miel_blanca_a = 16.03 * f_escala
+        agua_vapor_a = (azucar_a_th + miel_verde_a + miel_blanca_a) - masa_a_flujo
+
+        # E3
+        b_seed = 18.03 * f_escala
+        miel_pobre_a_seed = 4.02 * f_escala
+        miel_rica_b_seed = 1.48 * f_escala
+        azucar_c_seed = 12.53 * f_escala
+        miel_pobre_a_resto = 60.12 * f_escala
+        vap_tacha_b = 9.84 * f_escala
+        masa_b_flujo = 67.67 * f_escala
+
+        # E4
+        azucar_b_th = 32.48 * f_escala
+        miel_verde_b = 29.77 * f_escala
+        miel_blanca_b = 7.44 * f_escala
+        miel_rica_b_rem = 5.96 * f_escala
+        agua_vapor_b = (azucar_b_th + miel_verde_b + miel_blanca_b) - masa_b_flujo
+
+        # E5
+        alim_c = 35.73 * f_escala
+        vap_tacha_c = 5.83 * f_escala
+        masa_c_flujo = 29.34 * f_escala
+
+        # E6
+        azucar_c_th = 12.43 * f_escala
+        melaza_th = 23.08 * f_escala
+        agua_vapor_c = (azucar_c_th + melaza_th) - masa_c_flujo
+
+        # E7 & E8
+        comercial = 72.50 * f_escala
+        polvo = 4.61 * f_escala
+
+        def calc_v2_serv(flujo, t1, t2): return round((flujo * 3.6 * (t2-t1)) / 2257.0, 2)
+        v2_5081 = calc_v2_serv(miel_verde_a, 73.0, 79.8)
+        v2_5082 = calc_v2_serv(miel_blanca_a, 73.0, 80.3)
+        v2_5252 = calc_v2_serv(miel_verde_b, 71.0, 83.3)
+        v2_5251 = calc_v2_serv(miel_blanca_b, 71.0, 81.0)
+        v2_5412 = calc_v2_serv(melaza_th, 50.0, 60.0)
+
+        res['M6'] = {
+            '_flujo_liq': flujo_liq, '_flujo_miel_a': flujo_miel_a, '_flujo_5050': flujo_5050, '_brix_5050': brix_5050, '_pur_5050': pur_5050,
+            '_masa_a': masa_a_flujo, '_vap_a': vap_tacha_a, '_azucar_a': azucar_a_th, '_miel_verde_a': miel_verde_a, '_agua_v_a': agua_vapor_a,
+            '_b_seed': b_seed, '_mpa_seed': miel_pobre_a_seed, '_mrb_seed': miel_rica_b_seed, '_azc_seed': azucar_c_seed,
+            '_mpa_resto': miel_pobre_a_resto, '_vap_b': vap_tacha_b, '_masa_b': masa_b_flujo,
+            '_azucar_b': azucar_b_th, '_miel_verde_b': miel_verde_b, '_miel_blanca_b': miel_blanca_b, '_mrb_rem': miel_rica_b_rem, '_agua_v_b': agua_vapor_b,
+            '_alim_c': alim_c, '_vap_c': vap_tacha_c, '_masa_c': masa_c_flujo,
+            '_azucar_c': azucar_c_th, '_melaza': melaza_th, '_agua_v_c': agua_vapor_c,
+            '_comercial': comercial, '_polvo': polvo,
+            '_v2_5081': v2_5081, '_v2_5082': v2_5082, '_v2_5252': v2_5252, '_v2_5251': v2_5251, '_v2_5412': v2_5412
+        }
+
+        # =========================================================
+        # MÓDULO 7 (Requerido para M5)
+        # =========================================================
+        f_15 = cfg['OP_Calentador15_Vapor_Fuente']
+        h_15 = cat_vap.get(f_15, cat_vap['Vapor_4toEfecto'])['entalpia']
+        vap_15 = (172.19 * f_escala * 0.85 * (91.4 - 89.6) * 0.001 * 1000.0) / h_15
+        res['M7_temp'] = {'_vap_15': vap_15, '_f_15': f_15}
+
+        # =========================================================
+        # MÓDULO 5: EVAPORACIÓN
+        # =========================================================
+        f_in_m5 = res['M4']['OUT_JugoFinoCalentado_Flujo_th']
+        bx_in_m5 = res['M4']['OUT_JugoFinoCalentado_Brix_pct']
+        t_in_m5 = res['M4']['OUT_JugoFinoCalentado_Temp_C']
+
+        ms_m5 = f_in_m5 * (bx_in_m5 / 100.0)
+        bx_obj = cfg['OP_Evaporacion_BrixSalida_objetivo_pct']
+        f_jarabe = ms_m5 / (bx_obj / 100.0)
+        agua_evap = f_in_m5 - f_jarabe
+
+        evap_base = [107.75, 100.32, 96.63, 46.79, 4.43, 13.58]
+        flash_base = [3.50, 3.10, 2.80, 2.10, 1.50, 0.50]
+        esc_evap = agua_evap / sum(evap_base)
+
+        t_jugo = [131.6, 127.3, 122.2, 116.5, 110.8, 99.5]
+        t_vap = [131.0, 126.4, 120.2, 112.4, 106.5, 94.0]
+        v_names = ['Vapor_1erEfecto', 'Vapor_2doEfecto', 'Vapor_3erEfecto', 'Vapor_4toEfecto', 'Vapor_5toEfecto', 'Vapor_6toEfecto']
+
+        flujo_j_act = f_in_m5
+        detalles_ef = {}
+        oferta_vaps = {}
+        oferta_flash = {}
+        oferta_tot = {}
+        demandas = {v: 0.0 for v in v_names}
+        detalles_consumo = {v: [] for v in v_names}
+
+        for v in v_names:
+            demandas[v] += 0.3
+            detalles_consumo[v].append(("Sangría por Incondensables (Venteo)", 0.3))
+
+        def asignar_demanda(v_key, th, desc):
+            if v_key in demandas:
+                demandas[v_key] += th
+                detalles_consumo[v_key].append((desc, round(th, 2)))
+
+        asignar_demanda(f_3b, vap_3b, "Intercambiador 3B (M3)")
+        asignar_demanda(f_4, vap_4, "Calentador de Jugo Encalado Nº 4 (M3)")
+        asignar_demanda(f_56, vap_56, "Calentadores de Jugo Encalado Nº 5 + 6 (M3)")
+        asignar_demanda(f_7, vap_7, "Calentador Nº 7 (M3)")
+        asignar_demanda(f_no8, vap_no8, "1er Jugo Carbonatado Nº 8 (M3)")
+        asignar_demanda(f_no9, vap_no9, "Calentador de Jugo Filtrado Nº 9 / 2ª Carb. (M3)")
+        asignar_demanda(cfg['OP_DifPren_Int17_FuenteVapor'], demanda_v17, "Agua de prensa de difusión Nº 17 (M1)")
+        asignar_demanda(cfg['OP_Cal_Verde_Int00_FuenteVapor'], res['M2']['OUT_Cal_Verde_Int00_DemandaVapor_th'], "Calentador de Jugo Crudo Nº 00 (M2)")
+        asignar_demanda(cfg['OP_Cal_Verde_Int0_FuenteVapor'], res['M2']['OUT_Cal_Verde_Int0_DemandaVapor_th'], "Calentador de Jugo Crudo Nº 0 (M2)")
+        asignar_demanda(cfg['OP_Cal_Verde_Int1_FuenteVapor'], res['M2']['OUT_Cal_Verde_Int1_DemandaVapor_th'], "Calentador de Jugo Crudo Nº 1 (M2)")
+
+        asignar_demanda(f_10, vap_10, "Recalentador de Jugo Fino Nº 10 (M4)")
+        asignar_demanda(f_11_12, vap_11_12, "Recalentador de Jugo Fino Nº 11+12 (M4)")
+        asignar_demanda(f_13, vap_13, "Recalentador de Jugo Fino Nº 13 (M4)")
+        asignar_demanda(f_14, vap_14, "Recalentador de Jugo Fino Nº 14 (M4)")
+
+        asignar_demanda('Vapor_4toEfecto', vap_tacha_a + vap_tacha_c, "Cristalización A y C - Tachas A/C (M6)")
+        asignar_demanda('Vapor_3erEfecto', vap_tacha_b, "Cristalización B - Tachas B (M6)")
+        asignar_demanda('Vapor_2doEfecto', 3.0, "Inyecciones y Calentamiento en Casa de Cocimiento (M6)")
+        asignar_demanda(f_15, vap_15, "Recalentador Nº15 / Melter (M7)")
+
+        for i in range(6):
+            e_gen = evap_base[i] * esc_evap
+            f_gen = flash_base[i] * esc_evap
+            t_gen = e_gen + f_gen
+            flujo_j_act -= e_gen
+            bx_act = (ms_m5 / flujo_j_act) * 100.0
+            v_n = v_names[i]
+            oferta_tot[v_n] = t_gen
+
+            consumos = detalles_consumo[v_n]
+            tot_cons = demandas[v_n]
+            rem = t_gen - tot_cons
+            if rem > 0 and i < 5: consumos.append((f"{i+2}º efecto ", round(rem, 2)))
+
+            dest = "Tanque_Condensados_Evaporacion_9635 (via Balones Flash)" if i > 0 else "Depósito_Alimentación_Calderas_4056 (100%)"
+            if i == 1: dest = "Mixto: Parcial a Depósito 4056 y Parcial a Tanque 9635"
+
+            detalles_ef[f'Efecto_{i+1}'] = {
+                'nombre': v_n, 'f_jugo': flujo_j_act, 'bx_jugo': bx_act, 't_jugo': t_jugo[i],
+                'e_gen': e_gen, 'f_gen': f_gen, 't_gen': t_gen, 't_vap': t_vap[i],
+                'consumos': consumos, 'dest': dest, 'tot_cons': tot_cons, 'rem': rem
+            }
+
+        q_sens = (f_in_m5 * 0.94 * (131.6 - t_in_m5)) / 1000.0
+        q_lat = (oferta_tot['Vapor_1erEfecto'] * 521.5) / 1000.0
+        v_cald = ((q_sens + q_lat) * 1000.0) / 502.20
+
+        cond_4056 = oferta_tot['Vapor_1erEfecto']
+        cond_9635 = agua_evap - cond_4056
+
+        res['M5'] = {
+            '_v_cald': v_cald, '_f_jarabe': f_jarabe, '_bx_obj': bx_obj, '_t_salida': 99.50,
+            '_efectos': detalles_ef, '_cond_4056': cond_4056, '_cond_9635': cond_9635
+        }
+
+        # =========================================================
+        # MÓDULO 7: CONDENSADOS Y ACOR
+        # =========================================================
+        total_9635 = cond_9635 + vap_10 + vap_11_12 + vap_13 + vap_no9 + vap_4 + vap_56 + vap_no8 + demanda_v17
+        flash_9635 = 6.00 * f_escala
+        neto_9635 = total_9635 - flash_9635
+
+        scrubber = 12.00 * f_escala
+        agua_pkf = res['M3']['_pkf_agua']
+        int_3b_9635 = neto_9635 * 0.959
+
+        total_9620 = vap_tacha_b + vap_tacha_a + vap_tacha_c + vap_15 + (1.78*f_escala) + demanda_v18_19 + demanda_v20
+        flash_9620 = 2.76 * f_escala
+        neto_9620 = total_9620 - flash_9620
+
+        flujo_4605 = neto_9620 + int_3b_9635
+        t_4605 = 81.76
+
+        a_pans = 2.44 * f_escala
+        m_melter = 0.13 * f_escala
+        difusion = 86.50 * f_escala
+        tachas_c = 2.59 * f_escala
+        exc_balsa = flujo_4605 - (a_pans + m_melter + difusion + agua_pkf + tachas_c)
+
+        res['M7'] = {
+            '_tot_cond': total_9635 + total_9620 + cond_4056,
+            '_cond_4056': cond_4056,
+            '_int_3b_val': int_3b_9635,
+            '_int_3b_pct': 90.8,
+            '_t_3b_salida': 86.00,
+            '_t_9635': 94.0, '_bruto_9635': total_9635, '_flash_9635': flash_9635, '_neto_9635': neto_9635,
+            '_t_9620': 94.0, '_bruto_9620': total_9620, '_flash_9620': flash_9620, '_neto_9620': neto_9620,
+            '_f_4605_1': neto_9620, '_t_4605_1': 59.0,
+            '_f_4605_2': int_3b_9635, '_t_4605_2': 86.0,
+            '_tot_4605': flujo_4605, '_t_4605': t_4605,
+            '_apans': a_pans, '_mmelter': m_melter, '_dif': difusion, '_pkf': agua_pkf, '_tc': tachas_c, '_exc': exc_balsa,
+            '_f_casc': cond_9635, '_f_c7': vap_7, '_f_c10': vap_10, '_f_c11': vap_11_12, '_f_c13': vap_13,
+            '_f_c9': vap_no9, '_f_c4': vap_4, '_f_c56': vap_56, '_f_c8': vap_no8, '_f_c17': demanda_v17,
+            '_f_tb': vap_tacha_b, '_f_tac': vap_tacha_a + vap_tacha_c, '_f_15': vap_15, '_f_sec': 1.78*f_escala,
+            '_f_1819': demanda_v18_19, '_f_20': demanda_v20
+        }
+
+        # =========================================================
+        # FORMATOS TEXTUALES EXACTOS (Ejemplos 1, 2 y 3)
+        # =========================================================
+
+        # --- REPORTE M5 ---
+        txt_m5 = "========================================================================================================================\n"
+        txt_m5 += "  REPORTE DE EVAPORACIÓN Y BALANCE TÉRMICO - MÓDULO 5 (CONECTADO A M3, M4, M6 y M7)\n"
+        txt_m5 += "========================================================================================================================\n"
+        txt_m5 += f"    • Vapor de Calderas / Escape necesario para 1º Efecto : {res['M5']['_v_cald']:>10,.2f} t/h\n"
+        txt_m5 += f"    • Flujo de Jarabe Espeso (Thick Juice)  : {res['M5']['_f_jarabe']:>10,.2f} t/h\n"
+        txt_m5 += f"    • Brix Objetivo Configurado             : {res['M5']['_bx_obj']:>10,.2f}% Bx\n"
+        txt_m5 += f"    • Temperatura Final de Salida           : {res['M5']['_t_salida']:>10,.2f} ºC\n\n"
+
+        for i in range(1, 7):
+            ef = res['M5']['_efectos'][f'Efecto_{i}']
+            txt_m5 += f"  • {i}º EFECTO ({ef['nombre']}):\n"
+            txt_m5 += f"    [JUGO SALIDA]  - Flujo: {ef['f_jugo']:.2f} t/h  |  Brix: {ef['bx_jugo']:.2f}% Bx  |  Tª: {ef['t_jugo']:.2f} ºC\n"
+            txt_m5 += f"    [OFERTA VAPOR] - Generado Evap: {ef['e_gen']:.2f} t/h | Vapor Flash:  {ef['f_gen']:.2f} t/h | Total: {ef['t_gen']:.2f} t/h | Tª: {ef['t_vap']:.2f} ºC\n"
+            txt_m5 += f"    [CONSUMIDORES ANALIZADOS]:\n"
+            for cons_name, cons_val in ef['consumos']:
+                txt_m5 += f"      - {cons_name} (~{cons_val} t/h)\n"
+            txt_m5 += f"    [CONDensados]  - Destino: {ef['dest']}\n\n"
+
+        txt_m5 += "  RESUMEN GLOBAL DE VAPORES: GENERADOS + FLASH VS CONSUMIDOS (M3, M4, M6, M7)\n"
+        txt_m5 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m5 += "    Sangría / Efecto     | Gen. Evap (t/h) | Vap. Flash (t/h) | Oferta Total    | Consumido       | Remanente   \n"
+        txt_m5 += "    ---------------------+-----------------+------------------+-----------------+-----------------+-------------\n"
+        for i in range(1, 7):
+            ef = res['M5']['_efectos'][f'Efecto_{i}']
+            txt_m5 += f"    {ef['nombre']:<20} | {ef['e_gen']:>13.2f} t | {ef['f_gen']:>14.2f} t | {ef['t_gen']:>13.2f} t | {ef['tot_cons']:>13.2f} t | {ef['rem']:>10.2f} t\n"
+        txt_m5 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m5 += "  CIRCUITO GLOBAL DE CONDENSADOS\n"
+        txt_m5 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m5 += f"    • Condensados a Depósito Calderas (4056): {res['M5']['_cond_4056']:>10,.2f} t/h\n"
+        txt_m5 += f"    • Condensados a Tanque General (9635)   : {res['M5']['_cond_9635']:>10,.2f} t/h\n"
+        res['TXT_M5'] = txt_m5
+
+        # --- REPORTE M6 ---
+        txt_m6 = "=============================================================================================================================\n"
+        txt_m6 += "  REPORTE COMPLETO POR ETAPA - CASA DE COCIMIENTO Y CRISTALIZACIÓN (MÓDULO 6)\n"
+        txt_m6 += f"  [Brix Configurados -> Masa A: {brix_a:.2f}% | Masa B: {brix_b:.2f}% | Masa C: {brix_c:.2f}%]\n"
+        txt_m6 += "=============================================================================================================================\n"
+        m6 = res['M6']
+        txt_m6 += "  [ETAPA 0] DEPÓSITO 5050 (MEZCLA LICOR + MIEL RICA A)\n"
+        txt_m6 += f"     • Mezcla Resultante: {m6['_flujo_5050']:.2f} t/h  |  Brix: {m6['_brix_5050']:.2f}% DS  |  Pureza: {m6['_pur_5050']:.2f}% Pur  |  Tª: 88.9 ºC\n\n"
+
+        txt_m6 += "  [ETAPA 1] CRISTALIZACIÓN A (A-Pans)\n"
+        txt_m6 += f"     • [ENTRADAS] Licor Estándar  : {m6['_flujo_liq']:.2f} t/h  |  Brix: 73.90% DS  |  Pureza: 93.50% Pur  |  Tª: 89.7 ºC\n"
+        txt_m6 += f"     • [ENTRADAS] Agua Caliente    :   0.00 t/h  |  Brix:  0.00% DS  |  Pureza:  0.00% Pur  |  Tª: 85.0 ºC\n"
+        txt_m6 += f"     • [SALIDAS]  Vapor Tacha A    :  {m6['_vap_a']:.2f} t/h (Usa Vapor 4) | Tª: 57.0 ºC\n"
+        txt_m6 += f"     • [SALIDAS]  Masa Cocida A    : {m6['_masa_a']:.2f} t/h  |  Brix: {brix_a:.2f}% DS  |  Pureza: {m6['_pur_5050']:.2f}% Pur  |  Tª: 73.0 ºC\n\n"
+
+        txt_m6 += "  [ETAPA 2] CENTRIFUGACIÓN A\n"
+        txt_m6 += f"     • Azúcar Total A              :  {m6['_azucar_a']:.2f} t/h  |  Brix: 99.80% DS  |  Pureza: 99.50% Pur  |  Tª: 65.0 ºC\n"
+        txt_m6 += f"     • Miel Pobre A (Miel Verde A) :  {m6['_miel_verde_a']:.2f} t/h  |  Brix: 78.70% DS  |  Pureza: 83.70% Pur  |  Tª: 80.3 ºC\n"
+        txt_m6 += f"     • Miel Blanca A (Dep. 5050)   :  {m6['_flujo_miel_a']:.2f} t/h  |  Brix: 78.00% DS  |  Pureza: 87.40% Pur  |  Tª: 79.8 ºC\n"
+        txt_m6 += f"     • Agua/Vapor (Balance Masas)  :   {m6['_agua_v_a']:.2f} t/h\n\n"
+
+        txt_m6 += "  [ETAPA 3] CRISTALIZACIÓN B (B-Pans / B-FCB) - Formación de B-Seed\n"
+        txt_m6 += f"     • [B-SEED TOTAL]              :  {m6['_b_seed']:.2f} t/h  |  Brix: 92.60% DS  |  Pureza: 92.70% Pur\n"
+        txt_m6 += f"       - Desglose Miel Pobre A     :   {m6['_mpa_seed']:.2f} t/h\n"
+        txt_m6 += f"       - Desglose Miel Rica B      :   {m6['_mrb_seed']:.2f} t/h\n"
+        txt_m6 += f"       - Desglose Azúcar C         :  {m6['_azc_seed']:.2f} t/h (Pur: 96.70%)\n"
+        txt_m6 += f"     • [ENTRADAS] Miel Pobre A Resto :  {m6['_mpa_resto']:.2f} t/h  |  Brix: 78.70% DS  |  Pureza: 83.70% Pur  |  Tª: 79.8 ºC\n"
+        txt_m6 += f"     • [ENTRADAS] Agua Caliente    :   0.00 t/h  |  Brix:  0.00% DS  |  Pureza:  0.00% Pur  |  Tª: 85.0 ºC\n"
+        txt_m6 += f"     • [SALIDAS]  Vapor Tacha B    :   {m6['_vap_b']:.2f} t/h (Usa Vapor 3)\n"
+        txt_m6 += f"     • [SALIDAS]  Masa Cocida B    :  {m6['_masa_b']:.2f} t/h  |  Brix: {brix_b:.2f}% DS  |  Pureza: 86.05% Pur  |  Tª: 71.0 ºC (Bajo Vacío)\n\n"
+
+        txt_m6 += "  [ETAPA 4] CENTRIFUGACIÓN B\n"
+        txt_m6 += f"     • Azúcar B                    :  {m6['_azucar_b']:.2f} t/h  |  Brix: 99.00% DS  |  Pureza: 98.70% Pur  |  Tª: 40.0 ºC\n"
+        txt_m6 += f"     • Miel Verde B                :  {m6['_miel_verde_b']:.2f} t/h  |  Brix: 85.40% DS  |  Pureza: 72.50% Pur  |  Tª: 81.0 ºC\n"
+        txt_m6 += f"     • Miel Rica B (Total Prod.)   :   {m6['_miel_blanca_b']:.2f} t/h  |  Brix: 84.60% DS  |  Pureza: 76.20% Pur\n"
+        txt_m6 += f"     • Miel Rica B (Remanente a C) :   {m6['_mrb_rem']:.2f} t/h\n"
+        txt_m6 += f"     • Agua/Vapor (Balance Masas)  :   {m6['_agua_v_b']:.2f} t/h\n\n"
+
+        txt_m6 += "  [ETAPA 5] CRISTALIZACIÓN C (C-Pans en 2 Etapas)\n"
+        txt_m6 += f"     • [ENTRADAS] Miel Verde B     :  {m6['_miel_verde_b']:.2f} t/h\n"
+        txt_m6 += f"     • [ENTRADAS] Miel Rica B Rem. :   {m6['_mrb_rem']:.2f} t/h\n"
+        txt_m6 += f"     • [ALIMENTACIÓN TOTAL C]      :  {m6['_alim_c']:.2f} t/h  |  Brix: 78.27% DS  |  Pureza: 75.22% Pur\n"
+        txt_m6 += f"     • [ENTRADAS] Agua Caliente    :   0.00 t/h  |  Brix:  0.00% DS  |  Pureza:  0.00% Pur  |  Tª: 85.0 ºC\n"
+        txt_m6 += f"     • [SALIDAS]  Vapor Tacha C    :   {m6['_vap_c']:.2f} t/h (Usa Vapor 4)\n"
+        txt_m6 += f"     • [SALIDAS]  Masa Cocida C    :  {m6['_masa_c']:.2f} t/h  |  Brix: {brix_c:.2f}% DS  |  Pureza: 75.22% Pur\n"
+        txt_m6 += f"       - 1ª Etapa (Tachas a Vacío) :  83.0 ºC\n"
+        txt_m6 += f"       - 2ª Etapa (Crist. en Frío) :  50.0 ºC\n\n"
+
+        txt_m6 += "  [ETAPA 6] CENTRIFUGACIÓN C\n"
+        txt_m6 += f"     • Azúcar C                    :  {m6['_azucar_c']:.2f} t/h  |  Brix: 98.20% DS  |  Pureza: 96.70% Pur  |  Tª: 50.0 ºC\n"
+        txt_m6 += f"     • Melaza Final                :  {m6['_melaza']:.2f} t/h  |  Brix: 79.70% DS  |  Pureza: 57.20% Pur  |  Tª: 60.0 ºC\n"
+        txt_m6 += f"     • Agua/Vapor (Balance Masas)  :   {m6['_agua_v_c']:.2f} t/h\n\n"
+
+        txt_m6 += "  [ETAPA 7] SECADERO DE AZÚCAR\n"
+        txt_m6 += f"     • Azúcar Seco Comercial       :  {m6['_comercial']:.2f} t/h  |  Brix: 99.90% DS  |  Pureza: 99.80% Pur  |  Tª: 40.0 ºC\n"
+        txt_m6 += f"     • Polvo y Granzas (Retorno M7):   {m6['_polvo']:.2f} t/h  |  Brix: 99.90% DS  |  Pureza: 99.80% Pur  |  Tª: 40.0 ºC\n\n"
+
+        txt_m6 += "  [ETAPA 8] SILO\n"
+        txt_m6 += f"     • Entrada de Azúcar al Silo   :  {m6['_comercial']:.2f} t/h  |  Brix: 99.90% DS  |  Pureza: 99.80% Pur  |  Tª: 30.0 ºC\n\n"
+
+        txt_m6 += "  [SERVICIOS] CALENTAMIENTOS CON INYECCIÓN DE VAPOR 2\n"
+        txt_m6 += f"     • Depósito 5081 (73.0ºC -> 79.8ºC) :   {m6['_v2_5081']:.2f} t/h Vapor 2\n"
+        txt_m6 += f"     • Depósito 5082 (73.0ºC -> 80.3ºC) :   {m6['_v2_5082']:.2f} t/h Vapor 2\n"
+        txt_m6 += f"     • Depósito 5252 (71.0ºC -> 83.3ºC) :   {m6['_v2_5252']:.2f} t/h Vapor 2\n"
+        txt_m6 += f"     • Depósito 5251 (71.0ºC -> 81.0ºC) :   {m6['_v2_5251']:.2f} t/h Vapor 2\n"
+        txt_m6 += f"     • Depósito 5412 (50.0ºC -> 60.0ºC) :   {m6['_v2_5412']:.2f} t/h Vapor 2\n\n"
+
+        txt_m6 += "  [CONEXIÓN MÓDULO 5] DEMANDAS DE VAPOR DE CALEFACCIÓN EN TACHAS\n"
+        txt_m6 += f"     • Vapor 4 (Tachas A)          :  {m6['_vap_a']:.2f} t/h\n"
+        txt_m6 += f"     • Vapor 3 (Tachas B)          :   {m6['_vap_b']:.2f} t/h\n"
+        txt_m6 += f"     • Vapor 4 (Tachas C)          :   {m6['_vap_c']:.2f} t/h\n"
+        txt_m6 += "     --------------------------------------------------\n"
+        txt_m6 += f"     • Demanda Total Vapor 4 (A+C) :  {m6['_vap_a'] + m6['_vap_c']:.2f} t/h\n"
+        txt_m6 += f"     • Demanda Total Vapor 3 (B)   :   {m6['_vap_b']:.2f} t/h\n"
+        txt_m6 += "=============================================================================================================================\n"
+        res['TXT_M6'] = txt_m6
+
+        # --- REPORTE M3 y M7 ---
+        m7 = res['M7']
+        txt_m37 = "REPORTE DESGLOSADO INTEGRADO: MÓDULO 3 (DEPURACIÓN) Y MÓDULO 7 (CONDENSADOS Y AGUA)\n"
+        txt_m37 += "========================================================================================================================\n"
+        txt_m37 += "  [MÓDULO 3 - DEPURACIÓN DE JUGO]\n"
+        txt_m37 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m37 += f"    • Intercambiador 3B (Tag 2080-1)            : {m7['_int_3b_val']:.2f} t/h\n"
+        txt_m37 += f"      - Fuente de Energía                       : Condensados Depósito 9635 (Módulo 7 - Tag 2080-1)\n"
+        txt_m37 += f"      - Porcentaje asignado del Depósito 9635   :   {m7['_int_3b_pct']:.1f} %\n"
+        txt_m37 += f"      - Temperatura Salida Condensado (3B)      :  {m7['_t_3b_salida']:.2f} ºC\n\n"
+
+        txt_m37 += "  [MÓDULO 7 - DEPÓSITO 9635: CONDENSADOS DE EVAPORACIÓN Y CALENTAMIENTO GENERAL]\n"
+        txt_m37 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m37 += f"    • Temperatura de Salida del Depósito 9635 :   {m7['_t_9635']:.1f} ºC (Expansionado a Vapor VI)\n"
+        txt_m37 += f"    • Caudal Bruto Entrada                   : {m7['_bruto_9635']:.2f} t/h\n"
+        txt_m37 += f"    • Flasheo a Vapor VI                      :   {m7['_flash_9635']:.2f} t/h\n"
+        txt_m37 += f"    • Caudal Líquido Neto de Salida           : {m7['_neto_9635']:.2f} t/h\n\n"
+
+        txt_m37 += "    ENTRADAS ENTRANTES AL DEPÓSITO 9635:\n"
+        txt_m37 += "    Corriente / Equipo                                         | Caudal Parcial (t/h) | Temperatura (ºC)\n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n"
+        txt_m37 += f"    • Condensado Evaporación Cascado (Salida 6º Efecto)        |             {m7['_f_casc']:.2f} t/h |          94.0 ºC\n"
+        txt_m37 += f"    • Recalentador Nº 7 (M3 - {cfg['OP_Vapor_Calentador_7']})                    |               {m7['_f_c7']:.2f} t/h |          98.0 ºC\n"
+        txt_m37 += f"    • Recalentador Nº 10 (M4)                                  |              {m7['_f_c10']:.2f} t/h |         112.0 ºC\n"
+        txt_m37 += f"    • Recalentador Nº 11+12 (M4)                               |               {m7['_f_c11']:.2f} t/h |         120.0 ºC\n"
+        txt_m37 += f"    • Recalentador Nº 13 (M4)                                  |               {m7['_f_c13']:.2f} t/h |         130.0 ºC\n"
+        txt_m37 += f"    • Calentador Nº 9 (2ª Carb. - M3)                          |               {m7['_f_c9']:.2f} t/h |         110.0 ºC\n"
+        txt_m37 += f"    • Calentador Nº 4 (Jugo Encalado - M3)                     |              {m7['_f_c4']:.2f} t/h |         106.0 ºC\n"
+        txt_m37 += f"    • Calentadores Nº 5 + 6 (Jugo Encalado - M3)               |               {m7['_f_c56']:.2f} t/h |         100.0 ºC\n"
+        txt_m37 += f"    • 1er Jugo Carbonatado Nº 8 (M3)                           |               {m7['_f_c8']:.2f} t/h |         105.0 ºC\n"
+        txt_m37 += f"    • Agua de Prensa de Difusión Nº 17 (M3)                    |               {m7['_f_c17']:.2f} t/h |          98.0 ºC\n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n\n"
+
+        txt_m37 += "    REPARTO DEL CAUDAL LÍQUIDO NETO DEL DEPÓSITO 9635:\n"
+        txt_m37 += "    Destino / Consumidor                                       | Caudal Asignado (t/h) | Porcentaje (%) \n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n"
+        txt_m37 += f"    • Intercambiador 3B Módulo 3 (Tag 2080-1)                  |             {m7['_int_3b_val']:.2f} t/h |          95.9 %\n"
+        txt_m37 += f"    • Scrubber (Lavador de Gases)                              |              12.00 t/h |           4.1 %\n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n\n"
+
+        txt_m37 += "  [MÓDULO 7 - DEPÓSITO 9620: CONDENSADOS DEL CUARTO DE AZÚCAR / CRISTALIZACIÓN]\n"
+        txt_m37 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m37 += f"    • Temperatura de Salida del Depósito 9620 :   {m7['_t_9620']:.1f} ºC (Expansionado a Vapor VI)\n"
+        txt_m37 += f"    • Caudal Bruto Entrada                   :  {m7['_bruto_9620']:.2f} t/h\n"
+        txt_m37 += f"    • Flasheo a Vapor VI                      :   {m7['_flash_9620']:.2f} t/h\n"
+        txt_m37 += f"    • Caudal Líquido Neto de Salida           :  {m7['_neto_9620']:.2f} t/h\n\n"
+
+        txt_m37 += "    ENTRADAS ENTRANTES AL DEPÓSITO 9620:\n"
+        txt_m37 += "    Corriente / Equipo                                         | Caudal Parcial (t/h) | Temperatura (ºC)\n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n"
+        txt_m37 += f"    • Tachas de Cristalización B (Vapor 3 - M6)                |               {m7['_f_tb']:.2f} t/h |         112.0 ºC\n"
+        txt_m37 += f"    • Tachas de Cristalización A y C (Vapor 4 - M6)            |              {m7['_f_tac']:.2f} t/h |         106.0 ºC\n"
+        txt_m37 += f"    • Recalentador Nº 15 / Melter (M7)                         |               {m7['_f_15']:.2f} t/h |         126.0 ºC\n"
+        txt_m37 += f"    • Secadero de Azúcar (M6)                                  |               {m7['_f_sec']:.2f} t/h |          95.0 ºC\n"
+        txt_m37 += f"    • Intercambiadores Nº 18 + 19 (M1-M2)                      |               {m7['_f_1819']:.2f} t/h |         106.0 ºC\n"
+        txt_m37 += f"    • Intercambiador Nº 20 (M1-M2)                             |               {m7['_f_20']:.2f} t/h |         106.0 ºC\n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n\n"
+
+        txt_m37 += "  [MÓDULO 7 - CONDENSADOS A DEPÓSITO 4056 / 4605 (AGUA CALIENTE)]\n"
+        txt_m37 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m37 += f"    • 1º Corriente (Salida Intercambiador 3A - M2) :  {m7['_f_4605_1']:.2f} t/h | Tª: {m7['_t_4605_1']:.2f} ºC\n"
+        txt_m37 += f"    • 2º Corriente (Salida Intercambiador 3B - M3) : {m7['_f_4605_2']:.2f} t/h | Tª: {m7['_t_4605_2']:.2f} ºC\n"
+        txt_m37 += "    --------------------------------------------------------------------------------------------------------\n"
+        txt_m37 += f"    • CAUDAL TOTAL MEZCLA HACIA DEPÓSITO 4056/4605 : {m7['_tot_4605']:.2f} t/h\n"
+        txt_m37 += f"    • TEMPERATURA FINAL PONDERADA DE LA MEZCLA      :  {m7['_t_4605']:.2f} ºC\n\n"
+
+        txt_m37 += "    REPARTO DE CONSUMOS DESDE EL DEPÓSITO 4056 / 4605 (BALANCE ACOR):\n"
+        txt_m37 += "    Destino / Consumidor                                       | Caudal Asignado (t/h) | Porcentaje (%) \n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n"
+        txt_m37 += f"    • A-pans (Agua a Tachas de Cristalización A - Módulo 6)    |               {m7['_apans']:.2f} t/h |           0.7 %\n"
+        txt_m37 += f"    • Main Melter (Agua a Refundidora - Módulo 7)              |               {m7['_mmelter']:.2f} t/h |           0.0 %\n"
+        txt_m37 += f"    • Difusión (Agua Caliente a Difusión - Módulo 1)           |              {m7['_dif']:.2f} t/h |          25.9 %\n"
+        txt_m37 += f"    • PKF (Lavado de Filtros - Módulo 3)                       |              {m7['_pkf']:.2f} t/h |           4.5 %\n"
+        txt_m37 += f"    • Tachas C (Agua a Cristalización C - Módulo 6)            |               {m7['_tc']:.2f} t/h |           0.8 %\n"
+        txt_m37 += f"    • Excedente a Balsa (Caudal Total - Consumidores)          |             {m7['_exc']:.2f} t/h |          68.1 %\n"
+        txt_m37 += "    -----------------------------------------------------------+----------------------+----------------\n\n"
+
+        txt_m37 += "  RESUMEN GLOBAL DE CONDENSADOS Y AGUAS DE PLANTA\n"
+        txt_m37 += "  -------------------------------------------------------------------------------------------------------------------\n"
+        txt_m37 += f"    • Condensados Totales Generados          :     {m7['_tot_cond']:.2f} t/h\n"
+        txt_m37 += f"    • Destino Tanque de Calderas (4056 - 1º Ef):     {m7['_cond_4056']:.2f} t/h\n"
+        txt_m37 += "========================================================================================================================\n"
+        res['TXT_M37'] = txt_m37
+
+        return res
 
 # ====================================================================
 # DISEÑO DE LA APLICACIÓN WEB EN STREAMLIT
 # ====================================================================
-st.title("🏭 Simulador Gemelo Digital Planta ACOR 2026")
-st.markdown("Ajusta los **parámetros de entrada** en la barra lateral y observa en tiempo real los resultados del balance termodinámico 100% íntegro.")
+st.title("🏭 Simulador Proceso Azucarera ACOR 2026")
+st.markdown("Ajusta los parámetros operativos y de selección de fuentes de vapor en la barra lateral para recalcular dinámicamente todo el balance.")
 
-# BARRA LATERAL (INPUTS)
-st.sidebar.header("⚙️ PARÁMETROS DE ENTRADA")
+st.sidebar.header("⚙️ PARÁMETROS GENERALES")
+in_molienda = st.sidebar.slider("Molienda t/h", 300.0, 800.0, 550.0, 5.0)
+in_riqueza = st.sidebar.slider("Riqueza Remolacha (%)", 12.0, 22.0, 17.4, 0.1)
+in_pureza = st.sidebar.slider("Pureza Agrícola (%)", 85.0, 95.0, 90.4, 0.1)
+in_marc = st.sidebar.slider("Marco Remolacha (%)", 3.0, 7.0, 4.5, 0.1)
+op_ratio_ext = st.sidebar.slider("Draft", 1.0, 1.3, 1.11, 0.01)
+op_cao_pct = st.sidebar.slider("OP_Depuracion_CaO_pct_remolacha (%)", 0.8, 2.0, 1.28, 0.01)
+op_evap_brix_obj = st.sidebar.slider("OP_Evaporacion_BrixSalida_objetivo_pct (%)", 60.0, 75.0, 69.4, 0.1)
 
-with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=False):
-    in_molienda = st.slider("Molienda t/h", 300.0, 800.0, 445.0, 5.0)
-    in_riqueza = st.slider("Riqueza_Remolacha_pct (%)", 12.0, 22.0, 17.4, 0.1)
-    in_pureza = st.slider("Pureza_Agricola_pct (%)", 85.0, 95.0, 90.4, 0.1)
-    in_marc = st.slider("Marc_Fibra_pct (%)", 3.0, 7.0, 4.5, 0.1)
-    op_ratio_ext = st.slider("Ratio_Extraccion", 1.0, 1.3, 1.11, 0.01)
-    op_ms_pulpa = st.slider("MS_PulpaPrensada_pct (%)", 20.0, 35.0, 27.5, 0.5)
-    op_temp_crudo = st.slider("Temp_JugoCrudo_C (°C)", 15.0, 40.0, 26.0, 0.5)
-    op_ratio_aporte = st.slider("Ratio_AguaAporte_pct (%)", 15.0, 35.0, 24.93, 0.1)
-    op_mezcla_caliente = st.slider("Mezcla_AguaCaliente_pct (%)", 50.0, 100.0, 80.0, 1.0)
-    op_ratio_prensas = st.slider("Ratio_AguaPrensas_pct (%)", 20.0, 50.0, 37.04, 0.1)
-    op_ratio_recirc = st.slider("Ratio_Recirculacion_pct (%)", 100.0, 200.0, 165.0, 1.0)
-    op_ratio_desesp = st.slider("Ratio_Desespumador_pct (%)", 20.0, 70.0, 46.0, 1.0)
-    op_int17_tin = st.number_input("Int17_TempIn_C (°C)", value=62.0)
-    op_int17_tout = st.number_input("Int17_TempOut_C (°C)", value=72.0)
-    op_int18_tin = st.number_input("Int18_19_TempIn_C (°C)", value=71.4)
-    op_int18_tout = st.number_input("Int18_19_TempOut_C (°C)", value=73.3)
-    op_int20_tin = st.number_input("Int20_TempIn_C (°C)", value=71.4)
-    op_int20_tout = st.number_input("Int20_TempOut_C (°C)", value=76.5)
+# SELECCIÓN DINÁMICA DE FUENTES DE VAPOR
+st.sidebar.header("🔌 SELECCIÓN VAPOR POR EQUIPO")
+with st.sidebar.expander("Difusión (Int 17, 18+19, 20)", expanded=False):
+    f_v17 = st.selectbox("Intercambiador 17", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_5toEfecto'))
+    f_v18 = st.selectbox("Intercambiadores 18+19", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_V5_A609'))
+    f_v20 = st.selectbox("Intercambiador 20", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_V5_A609'))
 
-with st.sidebar.expander("🔥 Módulo 2 (Calentamiento Crudo)", expanded=False):
-    op_int00_tout = st.number_input("CalCrudo_Int00_TempOut_C (°C)", value=47.4)
-    op_int0_tout = st.number_input("CalCrudo_Int0_TempOut_C (°C)", value=48.8)
-    op_int1_tout = st.number_input("CalCrudo_Int1_TempOut_C (°C)", value=49.1)
-    op_int2_tout = st.number_input("CalCrudo_Int2_TempOut_C (°C)", value=49.1)
-    op_int3_tout = st.number_input("CalCrudo_Int3_TempOut_C (°C)", value=53.8)
-    op_int3a_tout = st.number_input("CalCrudo_Int3a_TempOut_C (°C)", value=59.0)
+with st.sidebar.expander("Calentamiento Crudo (Int 00 al 3A)", expanded=False):
+    f_v00 = st.selectbox("Intercambiador 00", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_Tachas_57C'))
+    f_v0 = st.selectbox("Intercambiador 0", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_Tachas_57C'))
+    f_v1 = st.selectbox("Intercambiador 1", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_Tachas_57C'))
+    f_v2 = st.selectbox("Intercambiador 2", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_Tachas_57C'))
+    f_v3 = st.selectbox("Intercambiador 3", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_V6_94C'))
+    f_v3a = st.selectbox("Intercambiador 3A", LISTA_VAPORES, index=LISTA_VAPORES.index('Condensado_A609_Sensible'))
 
-with st.sidebar.expander("🧪 Módulo 3 (Depuración y Carb.)", expanded=False):
-    op_cao_pct = st.slider("CaO_pct_remolacha (%)", 0.8, 2.0, 1.28, 0.01)
-    op_corefin_th = st.number_input("AzucarCorefin_th (t/h)", value=8.80)
-    op_alc1_in = st.number_input("1raCarb_AlcEntrada_gh (g/l)", value=2.50)
-    op_alc1_out = st.number_input("1raCarb_AlcSalida (g/l)", value=0.90)
-    op_alc2_out = st.number_input("2daCarb_AlcSalida (g/l)", value=0.27)
-    op_pkf_ms = st.slider("PKF_MS_Barros_pct (%)", 50.0, 75.0, 64.9, 0.1)
-    op_c3b_tin = st.number_input("Calent_3B_TempEntrada_C (°C)", value=61.4)
-    op_c3b_tout = st.number_input("Calent_3B_TempSalida_C (°C)", value=65.5)
-    op_c4_tout = st.number_input("Calent_4_TempSalida_C (°C)", value=82.3)
-    op_c56_tout = st.number_input("Calent_56_TempSalida_C (°C)", value=87.8)
-    op_c7_tout = st.number_input("Calent_7_TempSalida_C (°C)", value=87.8)
-    op_enf_1carb = st.number_input("Enfriamiento_1raCarb_C (°C)", value=1.60)
-    op_enf_1filt = st.number_input("Enfriamiento_1raFiltracion_C (°C)", value=1.00)
-    op_enf_2carb = st.number_input("Enfriamiento_2daCarb_C (°C)", value=4.70)
-    op_c8_tout = st.number_input("Calent_No8_TempSalida_C (°C)", value=86.2)
-    op_c9_tout = st.number_input("Calent_No9_TempSalida_C (°C)", value=92.0)
-    op_melting_pct = st.number_input("JugoFino_DestinoMelting_pct (%)", value=0.31)
+with st.sidebar.expander("Tren Térmico Depuración (3B al 9)", expanded=False):
+    f_v3b = st.selectbox("Calentador 3B", LISTA_VAPORES, index=LISTA_VAPORES.index('Condensados_Evaporacion'))
+    f_v4 = st.selectbox("Calentador 4", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_6toEfecto'))
+    f_v56 = st.selectbox("Calentadores 5+6", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_5toEfecto'))
+    f_v7 = st.selectbox("Calentador 7", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_4toEfecto'))
+    f_v8 = st.selectbox("Calentador 8", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_5toEfecto'))
+    f_v9 = st.selectbox("Calentador 9", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_3erEfecto'))
 
-with st.sidebar.expander("♨️ Módulo 4 (Thin Juice Heating)", expanded=False):
-    op_c10_tout = st.number_input("Calentador10_TempSalida_C (°C)", value=117.3)
-    op_c11_tout = st.number_input("Calentador11_12_TempSalida_C (°C)", value=121.6)
-    op_c13_tout = st.number_input("Calentador13_TempSalida_C (°C)", value=123.8)
-    op_c14_tout = st.number_input("Calentador14_TempSalida_C (°C)", value=123.8)
+with st.sidebar.expander("Thin Juice & Melter (Calentadores 10 al 15)", expanded=False):
+    f_v10 = st.selectbox("Recalentador 10", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_3erEfecto'))
+    f_v11_12 = st.selectbox("Recalentadores 11+12", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_2doEfecto'))
+    f_v13 = st.selectbox("Recalentador 13", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_1erEfecto'))
+    f_v14 = st.selectbox("Recalentador 14", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_Escape'))
+    f_v15 = st.selectbox("Recalentador 15 (Melter)", LISTA_VAPORES, index=LISTA_VAPORES.index('Vapor_4toEfecto'))
 
-with st.sidebar.expander("💨 Módulo 5 (Evaporación)", expanded=False):
-    op_evap_brix_obj = st.slider("Evaporacion_BrixSalida_objetivo_pct (%)", 60.0, 75.0, 69.4, 0.1)
-
-with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=False):
-    op_brix_masa_a = st.slider("Cocimiento_BrixMasaA_pct (%)", 85.0, 95.0, 91.0, 0.1)
-    op_brix_masa_b = st.slider("Cocimiento_BrixMasaB_pct (%)", 90.0, 98.0, 94.6, 0.1)
-    op_brix_masa_c = st.slider("Cocimiento_BrixMasaC_pct (%)", 90.0, 98.0, 95.3, 0.1)
-    op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
-    op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
-    op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
-    op_turb_cons = st.number_input("Turbina_ConsumoEspecifico_kWh_tVapor", value=45.0)
-
-# ====================================================================
-# CONFIGURACIÓN DINÁMICA DEL USUARIO
-# ====================================================================
+# Consolidado de configuración para la simulación
 config_usuario = {
-    'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
-    'IN_Marc_Fibra_pct': in_marc, 'OP_DifPren_Ratio_Extraccion': op_ratio_ext, 'OP_DifPren_MS_PulpaPrensada_pct': op_ms_pulpa,
-    'OP_DifPren_Temp_JugoCrudo_C': op_temp_crudo, 'OP_DifPren_Ratio_AguaAporte_pct': op_ratio_aporte,
-    'OP_DifPren_Mezcla_AguaCaliente_pct': op_mezcla_caliente, 'OP_DifPren_Ratio_AguaPrensas_pct': op_ratio_prensas,
-    'OP_DifPren_Ratio_Recirculacion_pct': op_ratio_recirc, 'OP_DifPren_Ratio_Desespumador_pct': op_ratio_desesp,
-    'OP_DifPren_Int17_TempIn_C': op_int17_tin, 'OP_DifPren_Int17_TempOut_C': op_int17_tout,
-    'OP_DifPren_Int18_19_TempIn_C': op_int18_tin, 'OP_DifPren_Int18_19_TempOut_C': op_int18_tout,
-    'OP_DifPren_Int20_TempIn_C': op_int20_tin, 'OP_DifPren_Int20_TempOut_C': op_int20_tout,
-
-    'OP_CalCrudo_Int00_TempOut_C': op_int00_tout, 'OP_CalCrudo_Int0_TempOut_C': op_int0_tout, 'OP_CalCrudo_Int1_TempOut_C': op_int1_tout,
-    'OP_CalCrudo_Int2_TempOut_C': op_int2_tout, 'OP_CalCrudo_Int3_TempOut_C': op_int3_tout, 'OP_CalCrudo_Int3a_TempOut_C': op_int3a_tout,
-
-    'OP_Depuracion_CaO_pct_remolacha': op_cao_pct, 'OP_AzucarCorefin_th': op_corefin_th, 'OP_1raCarb_AlcalinidadEntrada_gh': op_alc1_in,
-    'OP_1raCarb_AlcalinidadSalida': op_alc1_out, 'OP_2daCarb_AlcalinidadSalida': op_alc2_out, 'OP_PKF_MS_Barros_pct': op_pkf_ms,
-    'OP_Calent_3B_TempEntrada_C': op_c3b_tin, 'OP_Calent_3B_TempSalida_C': op_c3b_tout, 'OP_Calent_4_TempSalida_C': op_c4_tout,
-    'OP_Calent_56_TempSalida_C': op_c56_tout, 'OP_Calent_7_TempSalida_C': op_c7_tout, 'OP_Enfriamiento_1raCarb_C': op_enf_1carb,
-    'OP_Enfriamiento_1raFiltracion_C': op_enf_1filt, 'OP_Enfriamiento_2daCarb_C': op_enf_2carb, 'OP_Calent_No8_TempSalida_C': op_c8_tout,
-    'OP_Calent_No9_TempSalida_C': op_c9_tout, 'OP_JugoFino_DestinoMelting_pct': op_melting_pct,
-
-    'OP_Calentador10_TempSalida_C': op_c10_tout, 'OP_Calentador11_12_TempSalida_C': op_c11_tout, 'OP_Calentador13_TempSalida_C': op_c13_tout, 'OP_Calentador14_TempSalida_C': op_c14_tout,
-
+    'Molienda t/h': in_molienda,
+    'Riqueza_Remolacha': in_riqueza,
+    'Pureza_Agricola': in_pureza,
+    'Marco_Remolacha': in_marc,
+    'Draft': op_ratio_ext,
+    'OP_Depuracion_CaO_pct_remolacha': op_cao_pct,
     'OP_Evaporacion_BrixSalida_objetivo_pct': op_evap_brix_obj,
-    'OP_Cocimiento_BrixMasaA_pct': op_brix_masa_a, 'OP_Cocimiento_BrixMasaB_pct': op_brix_masa_b, 'OP_Cocimiento_BrixMasaC_pct': op_brix_masa_c,
-    'OP_Calentador15_Vapor_Fuente': 'Vapor_4toEfecto',
-    'OP_Pulpa_HumedadPellet_pct': op_pellet_hum, 'OP_SecaderoPulpa_PCI_Gas_kWh_m3': op_gas_pci, 'OP_SecaderoPulpa_RendimientoTérmico_pct': op_sec_rend,
-    'OP_Turbina_ConsumoEspecifico_kWh_tVapor': op_turb_cons
+    'OP_DifPren_Int17_FuenteVapor': f_v17,
+    'OP_DifPren_Int18_19_FuenteVapor': f_v18,
+    'OP_DifPren_Int20_FuenteVapor': f_v20,
+    'OP_Cal_Verde_Int00_FuenteVapor': f_v00,
+    'OP_Cal_Verde_Int0_FuenteVapor': f_v0,
+    'OP_Cal_Verde_Int1_FuenteVapor': f_v1,
+    'OP_Cal_Verde_Int2_FuenteVapor': f_v2,
+    'OP_Cal_Verde_Int3_FuenteVapor': f_v3,
+    'OP_Cal_Verde_Int3a_FuenteVapor': f_v3a,
+    'OP_Vapor_Calentador_3B': f_v3b,
+    'OP_Vapor_Calentador_4': f_v4,
+    'OP_Vapor_Calentador_56': f_v56,
+    'OP_Vapor_Calentador_7': f_v7,
+    'OP_Vapor_Calentador_No8': f_v8,
+    'OP_Vapor_Calentador_No9': f_v9,
+    'OP_Vapor_Calentador10': f_v10,
+    'OP_Vapor_Calentador11_12': f_v11_12,
+    'OP_Vapor_Calentador13': f_v13,
+    'OP_Vapor_Calentador14': f_v14,
+    'OP_Calentador15_Vapor_Fuente': f_v15,
+    # Variables de base para los cálculos que no están en sidebar en este snippet
+    'OP_DifPren_MS_PulpaPrensada_pct': 27.50, 'Tª_Jugo_Verde': 26.00, '% Ratio_Agua_Aporte': 24.93,
+    'OP_DifPren_Mezcla_AguaCaliente_pct': 80.00, 'OP_DifPren_Ratio_AguaPrensas_pct': 37.04,
+    'OP_DifPren_Ratio_Recirculacion_pct': 165.00, 'OP_DifPren_Ratio_Desespumador_pct': 46.00,
+    'Intercambiador 17_Tª Entrada_C': 62.00, 'OP_DifPren_Int17_Tª Salida_C': 72.00,
+    'OP_DifPren_Int18_19_TempIn_C': 71.40, 'OP_DifPren_Int18_19_TempOut_C': 73.30,
+    'OP_DifPren_Int20_TempIn_C': 71.40, 'OP_DifPren_Int20_TempOut_C': 76.50,
+    'OP_Cal_Verde_Int00_TempOut_C': 47.40, 'OP_Cal_Verde_Int0_TempOut_C': 48.80,
+    'OP_Cal_Verde_Int1_TempOut_C': 49.10, 'OP_Cal_Verde_Int2_TempOut_C': 49.10,
+    'OP_Cal_Verde_Int3_TempOut_C': 53.80, 'OP_Cal_Verde_Int3a_TempOut_C': 59.00,
+    'OP_AzucarCorefin_th': 8.80, 'OP_1raCarb_AlcalinidadEntrada_gh': 2.50,
+    'OP_1raCarb_AlcalinidadSalida': 0.90, 'OP_2daCarb_AlcalinidadSalida': 0.27,
+    'OP_PKF_MS_Barros_pct': 64.90, 'OP_Calent_3B_TempEntrada_C': 61.40,
+    'OP_Calent_3B_TempSalida_C': 65.50, 'OP_Calent_4_TempSalida_C': 82.30,
+    'OP_Calent_56_TempSalida_C': 87.80, 'OP_Calent_7_TempSalida_C': 87.80,
+    'OP_Enfriamiento_1raCarb_C': 1.60, 'OP_Enfriamiento_1raFiltracion_C': 1.00,
+    'OP_Enfriamiento_2daCarb_C': 4.70, 'OP_Calent_No8_TempSalida_C': 86.20,
+    'OP_Calent_No9_TempSalida_C': 92.00, 'OP_CalorEspecifico_Jugo_kWh_tC': 1.069,
+    'OP_JugoFino_DestinoMelting_pct': 0.00, 'OP_Calentador10_TempSalida_C': 117.30,
+    'OP_Calentador11_12_TempSalida_C': 121.60, 'OP_Calentador13_TempSalida_C': 123.80,
+    'OP_Calentador14_TempSalida_C': 123.80, 'OP_CalorEspecifico_JugoFino_kWh_tC': 1.069,
+    'OP_Cocimiento_BrixMasaA_pct': 91.00, 'OP_Cocimiento_BrixMasaB_pct': 94.60,
+    'OP_Cocimiento_BrixMasaC_pct': 95.30, 'OP_Cocimiento_RendimientoA_pct': 50.00,
+    'OP_Cocimiento_RendimientoB_pct': 47.00, 'OP_Cocimiento_RendimientoC_pct': 36.80
 }
 
-# Ejecución de la simulación
 planta = PlantaAzucareraCompleta(config_usuario)
 resultados = planta.simular()
 
-# ====================================================================
-# VISUALIZACIÓN DE RESULTADOS EN STREAMLIT
-# ====================================================================
-tabs = st.tabs([
-    "M1: Difusión", "M2: Cal Crudo", "M3: Depuración", "M4: Jugo Fino",
-    "M5: Evaporación", "M6: Cocimiento", "M7: Refundición", "M8: Condensados",
-    "M9: Energía", "📄 REPORTE MAESTRO"
+# Pestañas de visualización en Streamlit
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    "M1: Difusión", "M2: Cal. Verde", "M3: Depuración", "M4: Jugo Fino",
+    "M5: Evaporación", "M6: Cocimiento", "📄 REPORTE GLOBAL INTEGRADO"
 ])
 
-def render_modulo_tab(mod_key, titulo):
-    st.subheader(f"📊 Salidas del Balance: {titulo}")
+def render_tab_data(mod_key, titulo):
+    st.subheader(f"📊 {titulo}")
+    # Filtramos las llaves privadas usadas para el texto final
+    clean_dict = {k: v for k, v in resultados[mod_key].items() if not k.startswith('_')}
+    df = pd.DataFrame(list(clean_dict.items()), columns=['Variable Output', 'Valor'])
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
-    # 1. Mostrar escalares en DataFrame
-    dict_data = {k: v for k, v in resultados[mod_key].items() if not isinstance(v, dict)}
-    if dict_data:
-        df = pd.DataFrame(list(dict_data.items()), columns=['Variable del Proceso (Incluye Intermedias)', 'Valor Calculado'])
-        st.dataframe(df, use_container_width=True, hide_index=True)
+with tab1: render_tab_data('M1', 'Módulo 1: Difusiones y Prensas')
+with tab2: render_tab_data('M2', 'Módulo 2: Calentamiento de Jugo Verde')
+with tab3: render_tab_data('M3', 'Módulo 3: Depuración')
+with tab4: render_tab_data('M4', 'Módulo 4: Thin Juice Heating')
 
-    # 2. Mostrar diccionarios/matrices en crudo
-    for k, v in resultados[mod_key].items():
-        if isinstance(v, dict):
-            st.write(f"**Detalle Matriz / Diccionario: {k}**")
-            st.json(v)
+with tab5:
+    st.text_area("Reporte de Evaporación", resultados['TXT_M5'], height=600)
 
-with tabs[0]: render_modulo_tab('M1', 'Módulo 1: Difusiones y Prensas')
-with tabs[1]: render_modulo_tab('M2', 'Módulo 2: Calentamiento de Jugo Crudo')
-with tabs[2]: render_modulo_tab('M3', 'Módulo 3: Depuración y Carbonataciones')
-with tabs[3]: render_modulo_tab('M4', 'Módulo 4: Thin Juice Heating')
-with tabs[4]: render_modulo_tab('M5', 'Módulo 5: Estación de Evaporación')
-with tabs[5]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')
-with tabs[6]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')
-with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Circuito de Condensados')
-with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero de Pulpa y Energía')
+with tab6:
+    st.text_area("Reporte de Casa de Cocimiento", resultados['TXT_M6'], height=600)
 
-with tabs[9]:
-    st.subheader("📄 Reporte Consolidado Íntegro (Auditoría Total)")
-    reporte_global = ""
-    for m_key in ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9']:
-        reporte_global += f"========================================================================\n"
-        reporte_global += f" REPORTE MÓDULO: {m_key}\n"
-        reporte_global += f"========================================================================\n"
-        for k, v in resultados[m_key].items():
-            if isinstance(v, dict):
-                reporte_global += f"  • {k}:\n"
-                for sub_k, sub_v in v.items():
-                    reporte_global += f"      - {sub_k:<30}: {sub_v}\n"
-            else:
-                reporte_global += f"  • {k:<55}: {v}\n"
-        reporte_global += "\n"
-
-    st.text_area("Copia el reporte completo de la planta para análisis", reporte_global, height=600)
-    st.download_button("Descargar Reporte (.txt)", data=reporte_global, file_name="Reporte_Auditoria_Gemelo_Digital.txt", mime="text/plain")
+with tab7:
+    st.subheader("📄 Consolidado de Reportes Integrados")
+    r_total = resultados['TXT_M5'] + "\n\n" + resultados['TXT_M6'] + "\n\n" + resultados['TXT_M37']
+    st.text_area("Texto de Auditoría Maestro", r_total, height=800)
