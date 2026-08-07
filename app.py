@@ -120,7 +120,8 @@ class PlantaAzucareraCompleta:
         caco3_total = t_CaO_total * (100.0/56.0)
         co2_total = t_CaO_total * (44.0/56.0)
         
-        azucar_corefin = float(c['OP_AzucarCorefin_th']) * f_escala
+        # Correfino independiente de la molienda (valor configurable directo)
+        azucar_corefin = float(c['OP_AzucarCorefin_th'])
         azucar_baja = 0.54 * f_escala
         agua_lavado_filtros = 11.47 * f_escala
         agua_lechada_interna = 33.77 * f_escala 
@@ -635,7 +636,7 @@ with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=
     op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
     op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
-    op_turb_cons = st.number_input("Turbina_ConsumoEspecifico_kWh_tVapor", value=9.5)
+    op_turb_cons = 9.5
 
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
@@ -671,7 +672,7 @@ resultados = planta.simular()
 st.markdown("### 📈 Indicadores Clave de Rendimiento (KPIs)")
 
 v_evap_sobre_rem = resultados['M9'].get('OUT_KPI_VaporEvapSobreRemolacha_pct', 0.0)
-correfino_th = resultados['M7'].get('OUT_Corriente_CorrefinoEntrante_th', 0.0)
+correfino_th = float(config_usuario['OP_AzucarCorefin_th'])
 az_comercial = resultados['M6'].get('OUT_Corriente_AzucarComercial_Flujo_th', 0.0)
 pot_mw = resultados['M9'].get('OUT_Cogeneracion_PotenciaElectrica_MW', 0.0)
 
@@ -731,9 +732,8 @@ with tabs[3]: render_modulo_tab('M4', 'Módulo 4: Thin Juice Heating')
 with tabs[4]: render_modulo_tab('M5', 'Módulo 5: Estación de Evaporación')
 with tabs[5]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')
 with tabs[6]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')
-with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Circuito de Condensados')
-with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero de Pulpa y Energía')
-
+with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
+with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
 with tabs[9]:
     st.subheader("📄 Reporte Consolidado Íntegro (Auditoría Total)")
     reporte_global = ""
