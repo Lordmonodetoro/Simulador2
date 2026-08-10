@@ -8,10 +8,46 @@ import io
 # CONFIGURACIÓN DE PÁGINA STREAMLIT
 # ====================================================================
 st.set_page_config(
-    page_title="Gemelo Digital ACOR 2026 | Termodinámica",
+    page_title="Gemelo Digital ACOR 2026 | Termodinámica Pura",
     page_icon="🏭",
     layout="wide"
 )
+
+# ====================================================================
+# SISTEMA DE SEGURIDAD Y LOGIN
+# ====================================================================
+def check_password():
+    """Devuelve True si el usuario ha introducido la contraseña correcta."""
+    def password_entered():
+        # AQUÍ DEFINES TU CONTRASEÑA:
+        if st.session_state["password"] == "ACOR2026": 
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Borra la contraseña por seguridad
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # Primer inicio de sesión, mostrar input
+        st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center;'>Por favor, introduce la credencial de ingeniería para acceder al Gemelo Digital.</p>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.text_input("🔑 Contraseña:", type="password", on_change=password_entered, key="password")
+        return False
+    elif not st.session_state["password_correct"]:
+        # Contraseña incorrecta
+        st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.text_input("🔑 Contraseña:", type="password", on_change=password_entered, key="password")
+            st.error("❌ Contraseña incorrecta. Acceso denegado.")
+        return False
+    else:
+        # Contraseña correcta
+        return True
+
+if not check_password():
+    st.stop()  # Detiene la ejecución de todo el script de abajo si no hay login válido
 
 # ====================================================================
 # CATÁLOGOS MAESTROS Y PROPIEDADES TERMODINÁMICAS
@@ -108,72 +144,72 @@ class PlantaAzucareraCompleta:
         out = {}
         molienda = float(m1['OUT_RemolachaProcesada_th'])
         f_escala = molienda / 445.0
-
+        
         flujo_jugo_entrada = float(m2['OUT_Caudal_JugoverdeCaliente_Flujo_th'])
         brix_entrada = float(m2['OUT_Caudal_JugoverdeCaliente_Brix_pct'])
         pureza_entrada = float(m2['OUT_Caudal_JugoverdeCaliente_Pureza_pct'])
-
+        
         ms_jugo_verde = flujo_jugo_entrada * (brix_entrada / 100.0)
         pol_jugo_verde = ms_jugo_verde * (pureza_entrada / 100.0)
         cp_jugo = 0.94
-
+        
         t_CaO_total = molienda * (float(c['OP_Depuracion_CaO_pct_remolacha']) / 100.0)
         caco3_total = t_CaO_total * (100.0/56.0)
         co2_total = t_CaO_total * (44.0/56.0)
-
+        
         azucar_corefin = float(c['OP_AzucarCorefin_th'])
         azucar_baja = 0.54 * f_escala
         agua_lavado_filtros = 11.47 * f_escala
         agua_lechada_interna = 33.77 * f_escala 
-
+        
         flujo_etapa_2 = flujo_jugo_entrada + agua_lechada_interna + t_CaO_total + azucar_corefin
-
+        
         t_out_3b = float(c['OP_Calent_3B_TempSalida_C'])
         t_out_4 = float(c['OP_Calent_4_TempSalida_C'])
         t_out_56 = float(c['OP_Calent_56_TempSalida_C'])
         t_out_7 = float(c['OP_Calent_7_TempSalida_C'])
-
+        
         out['OUT_Recalentador4_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_4 - t_out_3b)) / self.cat_vap['Vapor_6toEfecto']['entalpia']
         out['OUT_Recalentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         out['OUT_Recalentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
-
+        
         pol_lost_mud = molienda * 0.0004
         undefined_losses = 1.50 * f_escala 
         impurezas_removidas = ms_jugo_verde * (1.0 - pureza_entrada/100.0) * 0.05 
-
+        
         ms_Lodos_1ro = caco3_total + impurezas_removidas + pol_lost_mud
         Lodos_1ro_humedos = ms_Lodos_1ro / (float(c['OP_PKF_MS_Lodos_pct']) / 100.0)
-
+        
         t_out_1ra_carb = t_out_7 - float(c['OP_Enfriamiento_1raCarb_C'])
         flujo_claro_aprox = flujo_etapa_2 + co2_total - Lodos_1ro_humedos - agua_lechada_interna
-
+        
         t_out_no8 = float(c['OP_Calent_No8_TempSalida_C'])
         out['OUT_Recalentador8_Vapor_th'] = (flujo_claro_aprox * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-
+        
         evap_agua_1ra = 1.75 * f_escala
         evap_agua_2da = 0.80 * f_escala
         vap_5_1ra_th = 0.29 * f_escala
-
+        
         t_out_1ra_filt = t_out_no8 - float(c['OP_Enfriamiento_1raFiltracion_C'])
         flujo_etapa_4 = flujo_claro_aprox + azucar_baja + agua_lavado_filtros
-
+        
         t_out_no9 = float(c['OP_Calent_No9_TempSalida_C'])
         out['OUT_Recalentador9_Vapor_th'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
         t_out_2da_carb = t_out_no9 - float(c['OP_Enfriamiento_2daCarb_C'])
-
+        
         flujo_jugo_Anteevaporación_total = (flujo_jugo_entrada + t_CaO_total + co2_total + 
                                 azucar_corefin + azucar_baja + agua_lavado_filtros + vap_5_1ra_th - 
                                 Lodos_1ro_humedos - evap_agua_1ra - evap_agua_2da - undefined_losses)
-
+        
         ms_Anteevaporación_final = ms_jugo_verde + (azucar_corefin * 0.998) + (azucar_baja * 0.98) - impurezas_removidas - pol_lost_mud - undefined_losses
         pol_Anteevaporación_final = pol_jugo_verde + (azucar_corefin * 0.992) + (azucar_baja * 0.95) - pol_lost_mud - undefined_losses
-
+        
         brix_Anteevaporación = (ms_Anteevaporación_final / flujo_jugo_Anteevaporación_total) * 100.0
         pureza_Anteevaporación = (pol_Anteevaporación_final / ms_Anteevaporación_final) * 100.0
-
+        
         flujo_jugo_Anteevaporación_melting = flujo_jugo_Anteevaporación_total * (float(c['OP_JugoAnteevaporación_DestinoMelting_pct']) / 100.0)
         flujo_jugo_Anteevaporación_mod4 = max(0.1, flujo_jugo_Anteevaporación_total - flujo_jugo_Anteevaporación_melting)
-
+        
         out.update({
             'OUT_Caudal_JugoAnteevaporaciónTotal_Flujo_th': flujo_jugo_Anteevaporación_total,
             'OUT_Caudal_JugoAnteevaporaciónTotal_Brix_pct': brix_Anteevaporación,
@@ -225,7 +261,7 @@ class PlantaAzucareraCompleta:
         out = {}
         molienda = float(m1.get('OUT_RemolachaProcesada_th', float(c['IN_Molienda_th'])))
         f_escala = molienda / 445.0
-        brix_a = float(c['OP_Cuarto de Azúcar_BrixMasaA_pct'])
+        brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
 
         flujo_liq = float(m7.get('OUT_Caudal_LicorEstandar_Flujo_th', 172.19 * f_escala))
         brix_liq = float(m7.get('OUT_Caudal_LicorEstandar_Brix_pct', 73.90))
@@ -261,8 +297,6 @@ class PlantaAzucareraCompleta:
         sol_a = fsolve(modelo_pan_centrifuga_A, est_a, args=(MS_liq, Pol_liq, brix_a))
         
         f_masa_a, f_az_comercial_tot, f_verde_a, f_Miel_Rica_a, agua_lav_a = sol_a
-        
-        # Desglose del polvo de azúcar para ajustar la comercial final
         f_polvo = f_az_comercial_tot * (4.61 / (72.50 + 4.61)) 
         f_az_comercial = f_az_comercial_tot - f_polvo
 
@@ -304,10 +338,10 @@ class PlantaAzucareraCompleta:
             'OUT_Caudal_AzucarB_Fundicion_Flujo_th': float(f_az_b),
             'OUT_Caudal_AzucarB_Fundicion_Pureza_pct': 98.7,
             'OUT_Caudal_MasaCocidaB_Flujo_th': float(masa_b),
-            'OUT_Caudal_MasaCocidaB_Brix_pct': float(c['OP_Cuarto de Azúcar_BrixMasaB_pct']),
+            'OUT_Caudal_MasaCocidaB_Brix_pct': float(c['OP_Cocimiento_BrixMasaB_pct']),
             'OUT_Caudal_MasaCocidaB_Pureza_pct': 86.1,
             'OUT_Caudal_MasaCocidaC_Flujo_th': float(masa_c),
-            'OUT_Caudal_MasaCocidaC_Brix_pct': float(c['OP_Cuarto de Azúcar_BrixMasaC_pct']),
+            'OUT_Caudal_MasaCocidaC_Brix_pct': float(c['OP_Cocimiento_BrixMasaC_pct']),
             'OUT_Caudal_MasaCocidaC_Pureza_pct': 73.0,
             'OUT_Caudal_MelazaFinal_Flujo_th': float(f_melaza_final),
             'OUT_Caudal_MelazaFinal_Brix_pct': 79.70,
@@ -603,7 +637,7 @@ with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=
     in_marc = st.slider("Marc_Fibra_pct (%)", 3.0, 7.0, 4.5, 0.1)
     op_ratio_ext = st.slider("Ratio_Extraccion", 1.0, 1.3, 1.11, 0.01)
     op_ms_pulpa = st.slider("MS_PulpaPrensada_pct (%)", 20.0, 35.0, 27.5, 0.5)
-    op_temp_crudo = st.slider("Temp_JugoCrudo_C (°C)", 15.0, 40.0, 26.0, 0.5)
+    op_temp_verde = st.slider("Temp_Jugoverde_C (°C)", 15.0, 40.0, 26.0, 0.5)
     op_ratio_aporte = st.slider("Ratio_AguaAporte_pct (%)", 15.0, 35.0, 24.93, 0.1)
     op_mezcla_caliente = st.slider("Mezcla_AguaCaliente_pct (%)", 50.0, 100.0, 80.0, 1.0)
     op_ratio_prensas = st.slider("Ratio_AguaPrensas_pct (%)", 20.0, 50.0, 37.04, 0.1)
@@ -616,7 +650,7 @@ with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=
     op_int20_tin = st.number_input("Int20_TempIn_C (°C)", value=71.4)
     op_int20_tout = st.number_input("Int20_TempOut_C (°C)", value=76.5)
 
-with st.sidebar.expander("🔥 Módulo 2 (Calentamiento Crudo)", expanded=False):
+with st.sidebar.expander("🔥 Módulo 2 (Calentamiento verde)", expanded=False):
     op_int00_tout = st.number_input("Calverde_Int00_TempOut_C (°C)", value=47.4)
     op_int0_tout = st.number_input("Calverde_Int0_TempOut_C (°C)", value=48.8)
     op_int1_tout = st.number_input("Calverde_Int1_TempOut_C (°C)", value=49.1)
@@ -652,14 +686,44 @@ with st.sidebar.expander("♨️ Módulo 4 (Thin Juice Heating)", expanded=False
 with st.sidebar.expander("💨 Módulo 5 (Evaporación)", expanded=False):
     op_evap_brix_obj = st.slider("Evaporacion_BrixSalida_objetivo_pct (%)", 60.0, 75.0, 69.4, 0.1)
 
-with st.sidebar.expander("🍬 Módulo 6 (Cuarto de Azúcar) & 9 (Energía)", expanded=False):
-    op_brix_masa_a = st.slider("Cuarto de Azúcar_BrixMasaA_pct (%)", 85.0, 95.0, 91.0, 0.1)
-    op_brix_masa_b = st.slider("Cuarto de Azúcar_BrixMasaB_pct (%)", 90.0, 98.0, 94.6, 0.1)
-    op_brix_masa_c = st.slider("Cuarto de Azúcar_BrixMasaC_pct (%)", 90.0, 98.0, 95.3, 0.1)
+with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=False):
+    op_brix_masa_a = st.slider("Cocimiento_BrixMasaA_pct (%)", 85.0, 95.0, 91.0, 0.1)
+    op_brix_masa_b = st.slider("Cocimiento_BrixMasaB_pct (%)", 90.0, 98.0, 94.6, 0.1)
+    op_brix_masa_c = st.slider("Cocimiento_BrixMasaC_pct (%)", 90.0, 98.0, 95.3, 0.1)
     op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
     op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
-    op_turb_cons = 90.0
+    op_turb_cons = 95.0
+
+# -----------------
+# INICIO DE SESIÓN
+# -----------------
+def check_password():
+    def password_entered():
+        if st.session_state["password"] == "ACOR2026": 
+            st.session_state["password_correct"] = True
+            del st.session_state["password"] 
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.text_input("🔑 Contraseña:", type="password", on_change=password_entered, key="password")
+        return False
+    elif not st.session_state["password_correct"]:
+        st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.text_input("🔑 Contraseña:", type="password", on_change=password_entered, key="password")
+            st.error("❌ Contraseña incorrecta. Acceso denegado.")
+        return False
+    else:
+        return True
+
+if not check_password():
+    st.stop() 
 
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
@@ -681,7 +745,7 @@ config_usuario = {
     'OP_Calent_No9_TempSalida_C': op_c9_tout, 'OP_JugoAnteevaporación_DestinoMelting_pct': op_melting_pct,
     'OP_Recalentador10_TempSalida_C': op_c10_tout, 'OP_Recalentador11_12_TempSalida_C': op_c11_tout, 'OP_Recalentador13_TempSalida_C': op_c13_tout, 'OP_Recalentador14_TempSalida_C': op_c14_tout,
     'OP_Evaporacion_BrixSalida_objetivo_pct': op_evap_brix_obj,
-    'OP_Cuarto de Azúcar_BrixMasaA_pct': op_brix_masa_a, 'OP_Cuarto de Azúcar_BrixMasaB_pct': op_brix_masa_b, 'OP_Cuarto de Azúcar_BrixMasaC_pct': op_brix_masa_c,
+    'OP_Cocimiento_BrixMasaA_pct': op_brix_masa_a, 'OP_Cocimiento_BrixMasaB_pct': op_brix_masa_b, 'OP_Cocimiento_BrixMasaC_pct': op_brix_masa_c,
     'OP_Pulpa_HumedadPellet_pct': op_pellet_hum, 'OP_SecaderoPulpa_PCI_Gas_kWh_m3': op_gas_pci, 'OP_SecaderoPulpa_RendimientoTérmico_pct': op_sec_rend,
     'OP_Turbina_ConsumoEspecifico_kWh_tVapor': op_turb_cons
 }
@@ -748,7 +812,7 @@ tabs = st.tabs([
     "M4: Jugo Anteevaporación",
     "M5: Evaporación",
     "M7: Refundición",
-    "M6: Cuarto de Azúcar",
+    "M6: Cocimiento",
     "M8: Condensados",
     "M9: Energía",
     "📄 REPORTE MAESTRO"
@@ -771,7 +835,7 @@ with tabs[2]: render_modulo_tab('M3', 'Módulo 3: Depuración y Carbonataciones'
 with tabs[3]: render_modulo_tab('M4', 'Módulo 4: Thin Juice Heating')
 with tabs[4]: render_modulo_tab('M5', 'Módulo 5: Estación de Evaporación')
 with tabs[5]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')  
-with tabs[6]: render_modulo_tab('M6', 'Módulo 6: Cuarto de Azúcar y Cristalización')  
+with tabs[6]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')  
 with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
 with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
 
@@ -817,7 +881,7 @@ with tabs[9]:
         'M4': 'Módulo 4: Thin Juice Heating',
         'M5': 'Módulo 5: Estación de Evaporación (Caudales por efecto y Vapores)',
         'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',  
-        'M6': 'Módulo 6: Cuarto de Azúcar y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  
+        'M6': 'Módulo 6: Cocimiento y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  
         'M8': 'Módulo 8: Circuito de Condensados y Agua',
         'M9': 'Módulo 9: Secadero de Pulpa y Energía'
     }
