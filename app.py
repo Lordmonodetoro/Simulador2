@@ -353,9 +353,9 @@ class PlantaAzucareraCompleta:
     def mod_7_refundicion(self, m5, m3, m6):
         c = self.config
         out = {}
-        flujo_jarabe_evap_th = float(m5.get('OUT_Caudal_Jarabe_Flujo_th', 0.0))
-        brix_jarabe_evap = float(m5.get('OUT_Caudal_Jarabe_Brix_pct', 69.40))
-        pur_jarabe_evap = float(m5.get('OUT_Caudal_Jarabe_Pureza_pct', 91.60))
+        flujo_jarabe_evap_th = float(m5.get('Caudal Jarabe salida Evaporación (t/h)', 0.0))
+        brix_jarabe_evap = float(m5.get('Brix Jarabe salida Evaporación (ºBx)', 69.40))
+        pur_jarabe_evap = float(m5.get('Pureza Jarabe salida Evaporación (ºPz)', 91.60))
 
         flujo_jugo_Anteevaporación_th = float(m3.get('Caudal Jugo Anteevaporación (t/h)', 0.0)) * (float(c['OP_JugoAnteevaporación_DestinoMelting_pct'])/100.0)
         brix_jugo_Anteevaporación_pct = float(m3.get('Brix Jugo Anteevaporación (ºBx)', 18.40))
@@ -489,26 +489,26 @@ class PlantaAzucareraCompleta:
         Brix_out_calc = solucion[12:18]
 
         out.update({
-            'OUT_Caudal_Jarabe_Flujo_th': float(F_out_calc[-1]),
-            'OUT_Caudal_Jarabe_Brix_pct': float(Brix_out_calc[-1]),
-            'OUT_Caudal_Jarabe_Pureza_pct': float(m4.get('Pureza Jugo Anteevaporación (%)', 91.60)),
-            'OUT_Evaporacion_AguaTotalEvaporada_th': float(sum(V_evap_calc)),
-            'OUT_M5_Demanda_V1_Total_th': float(D[0]),
-            'OUT_M5_Demanda_V2_Total_th': float(D[1]),
-            'OUT_M5_Demanda_V3_Total_th': float(D[2]),
-            'OUT_M5_Demanda_V4_Total_th': float(D[3]),
-            'OUT_M5_Demanda_V5_Total_th': float(D[4]),
-            'OUT_M5_Demanda_V6_Total_th': float(D[5]),
+            'Caudal Jarabe salida Evaporación (t/h)': float(F_out_calc[-1]),
+            'Brix Jarabe salida Evaporación (ºBx)': float(Brix_out_calc[-1]),
+            'Pureza Jarabe salida Evaporación (ºPz)': float(m4.get('Pureza Jugo Anteevaporación (%)', 91.60)),
+            'Caudal total Agua Evaporada (t/h)': float(sum(V_evap_calc)),
+            'Consumidores vapor 1ª (t/h)': float(D[0]),
+            'Consumidores vapor 2ª (t/h)': float(D[1]),
+            'Consumidores vapor 3ª (t/h)': float(D[2]),
+            'Consumidores vapor 4ª (t/h)': float(D[3]),
+            'Consumidores vapor 5ª (t/h)': float(D[4]),
+            'Consumidores vapor 6ª (t/h)': float(D[5]),
             'OUT_Condensados_Calderas4056_th': float(V_vivo_0),
             'OUT_Condensado_CascadaFinal_9635_th': float(sum(V_evap_calc)),
             'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0),
             'OUT_M5_CaudalJugoAnteevaporaciónEntrante_th': float(flujo_entrada),
-            'OUT_M5_Vapor1erEfecto_th': float(V_vivo_0),
-            'OUT_M5_Vapor2doEfecto_th': float(V_evap_calc[0] - Sangrias_netas[0]),
-            'OUT_M5_Vapor3erEfecto_th': float(V_evap_calc[1] - Sangrias_netas[1]),
-            'OUT_M5_Vapor4toEfecto_th': float(V_evap_calc[2] - Sangrias_netas[2]),
-            'OUT_M5_Vapor5toEfecto_th': float(V_evap_calc[3] - Sangrias_netas[3]),
-            'OUT_M5_Vapor6toEfecto_th': float(V_evap_calc[4] - Sangrias_netas[4])
+            'Caudal de vapor 1ª (t/h)': float(V_vivo_0),
+            'Caudal de vapor 2ª (t/h)': float(V_evap_calc[0] - Sangrias_netas[0]),
+            'Caudal de vapor 3ª (t/h)': float(V_evap_calc[1] - Sangrias_netas[1]),
+            'Caudal de vapor 4ª (t/h)': float(V_evap_calc[2] - Sangrias_netas[2]),
+            'Caudal de vapor 5ª (t/h)': float(V_evap_calc[3] - Sangrias_netas[3]),
+            'Caudal de vapor 6ª (t/h)': float(V_evap_calc[4] - Sangrias_netas[4])
         })
         for i in range(6):
             out[f'OUT_M5_Oferta_Ef{i+1}_TOTAL_Generado_th'] = float(V_evap_calc[i])
