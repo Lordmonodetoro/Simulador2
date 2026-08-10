@@ -130,9 +130,9 @@ class PlantaAzucareraCompleta:
             out[f'OUT_Recalentador{eq}_Vapor_th'] = (flujo_jugo * cp_jugo * dt) / self.cat_vap[fuente]['entalpia']
             t_in = t_out
 
-        out['OUT_Caudal_JugoverdeCaliente_Flujo_th'] = flujo_jugo
-        out['OUT_Caudal_JugoverdeCaliente_Brix_pct'] = ds_jugo
-        out['OUT_Caudal_JugoverdeCaliente_Pureza_pct'] = pur_jugo
+        out['Caudal Jugo Verde (t/h)'] = flujo_jugo
+        out['Brix Jugo Verde calen. (ºBx)'] = ds_jugo
+        out['Pureza Jugo Verde calen. (ºPz)'] = pur_jugo
         return out
 
     def mod_3_depuracion(self, m1, m2, m8):
@@ -141,9 +141,9 @@ class PlantaAzucareraCompleta:
         molienda = float(m1['Remolacha Procesada (t/h)'])
         f_escala = molienda / 445.0
         
-        flujo_jugo_entrada = float(m2['OUT_Caudal_JugoverdeCaliente_Flujo_th'])
-        brix_entrada = float(m2['OUT_Caudal_JugoverdeCaliente_Brix_pct'])
-        pureza_entrada = float(m2['OUT_Caudal_JugoverdeCaliente_Pureza_pct'])
+        flujo_jugo_entrada = float(m2['Caudal Jugo Verde (t/h)'])
+        brix_entrada = float(m2['Brix Jugo Verde calen. (ºBx)'])
+        pureza_entrada = float(m2['Pureza Jugo Verde calen. (ºPz)'])
         
         ms_jugo_verde = flujo_jugo_entrada * (brix_entrada / 100.0)
         pol_jugo_verde = ms_jugo_verde * (pureza_entrada / 100.0)
@@ -443,11 +443,11 @@ class PlantaAzucareraCompleta:
         d_v5_vaho = 0.29 * (float(c['IN_Molienda_th'])/445.0)
         D[4] = d_v5_h56 + d_v5_h8 + d_v5_h17 + d_v5_h18 + d_v5_h20 + d_v5_vaho + SANGRIA_FIJA
 
-        d_v6_h00 = float(m2.get('OUT_Recalentador00_Vapor_th', 0.0))
-        d_v6_h0 = float(m2.get('OUT_Recalentador0_Vapor_th', 0.0))
-        d_v6_h1 = float(m2.get('OUT_Recalentador1_Vapor_th', 0.0))
-        d_v6_h2 = float(m2.get('OUT_Recalentador2_Vapor_th', 0.0))
-        d_v6_h3 = float(m2.get('OUT_Recalentador3_Vapor_th', 0.0))
+        d_v6_h00 = float(m2.get('Consumo vapor R00 (J. verde)', 0.0))
+        d_v6_h0 = float(m2.get('Consumo vapor R0 (J. verde)', 0.0))
+        d_v6_h1 = float(m2.get('Consumo vapor R1 (J. verde) (t/h)', 0.0))
+        d_v6_h2 = float(m2.get('Consumo vapor R2 (J. verde) (t/h)', 0.0))
+        d_v6_h3 = float(m2.get('Consumo vapor R3 (J. verde) (t/h)', 0.0))
         D[5] = d_v6_h00 + d_v6_h0 + d_v6_h1 + d_v6_h2 + d_v6_h3 + SANGRIA_FIJA
 
         factor_escala = flujo_entrada / 502.82
@@ -499,16 +499,16 @@ class PlantaAzucareraCompleta:
             'Consumidores vapor 4ª (t/h)': float(D[3]),
             'Consumidores vapor 5ª (t/h)': float(D[4]),
             'Consumidores vapor 6ª (t/h)': float(D[5]),
-            'OUT_Condensados_Calderas4056_th': float(V_vivo_0),
+            'Caudal condensados Calderas (t/h)': float(V_vivo_0),
             'OUT_Condensado_CascadaFinal_9635_th': float(sum(V_evap_calc)),
             'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0),
             'OUT_M5_CaudalJugoAnteevaporaciónEntrante_th': float(flujo_entrada),
             'ratios1': float(V_vivo_0),
-            'Caudal de vapor 2ª (t/h)': float(V_evap_calc[0] - Sangrias_netas[0]),
-            'Caudal de vapor 3ª (t/h)': float(V_evap_calc[1] - Sangrias_netas[1]),
-            'Caudal de vapor 4ª (t/h)': float(V_evap_calc[2] - Sangrias_netas[2]),
-            'Caudal de vapor 5ª (t/h)': float(V_evap_calc[3] - Sangrias_netas[3]),
-            'Caudal de vapor 6ª (t/h)': float(V_evap_calc[4] - Sangrias_netas[4])
+            '2': float(V_evap_calc[0] - Sangrias_netas[0]),
+            '3': float(V_evap_calc[1] - Sangrias_netas[1]),
+            '4': float(V_evap_calc[2] - Sangrias_netas[2]),
+            '5': float(V_evap_calc[3] - Sangrias_netas[3]),
+            '6': float(V_evap_calc[4] - Sangrias_netas[4])
         })
         for i in range(6):
             out[f'OUT_M5_Oferta_Ef{i+1}_TOTAL_Generado_th'] = float(V_evap_calc[i])
@@ -561,7 +561,7 @@ class PlantaAzucareraCompleta:
             'Caudal entrada Dep. conden. tachas': total_9620,
             'Caudal salida Dep. conden. tachas': neto_liquido_9620,
             'Caudal Entrada Deposito 90 (t/h)': flujo_total_4605,
-            'OUT_Condensados_Totales_th': total_9635 + total_9620 + float(m5.get('OUT_Condensados_Calderas4056_th', 107.73))
+            'OUT_Condensados_Totales_th': total_9635 + total_9620 + float(m5.get('Caudal condensados Calderas (t/h)', 107.73))
         })
         return out
 
