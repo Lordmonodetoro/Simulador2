@@ -344,7 +344,7 @@ class PlantaAzucareraCompleta:
             'Pureza Masa C (ºPz)': 57.20,
             'Caudal de Miel Pobre A (t/h)': float(f_verde_a),
             'Caudal de Miel Rica A (t/h)': float(f_Miel_Rica_a * 0.25),
-            'OUT_M6_MielB_th': float(f_miel_b),
+            'Caudal de Miel Pobre B (t/h)': float(f_miel_b),
             'Caudal de Agua Centrifugas A (t/h)': float(agua_lav_a),
             'OUT_M6_RendimientoCristal_pct': float(92.4)
         })
@@ -558,9 +558,9 @@ class PlantaAzucareraCompleta:
             'OUT_Evaporación_FlujoTotal_th': total_9635,
             'OUT_Evaporación_FlujoNetoLiquido_th': neto_liquido_9635,
             'OUT_Intercambiador3B_2080_1_Calculado_th': intercambiador_3b_2080_1,
-            'OUT_Deposito9620_FlujoTotal_th': total_9620,
-            'OUT_Deposito9620_FlujoNetoLiquido_th': neto_liquido_9620,
-            'OUT_Deposito4056_4605_Flujo_th': flujo_total_4605,
+            'Caudal entrada Dep. conden. tachas': total_9620,
+            'Caudal salida Dep. conden. tachas': neto_liquido_9620,
+            'Caudal Entrada Deposito 90 (t/h)': flujo_total_4605,
             'OUT_Condensados_Totales_th': total_9635 + total_9620 + float(m5.get('OUT_Condensados_Calderas4056_th', 107.73))
         })
         return out
@@ -588,7 +588,7 @@ class PlantaAzucareraCompleta:
             'OUT_SecaderoPulpa_GasNatural_m3h': gas_m3h,
             'OUT_Caldera_VaporVivoTotal_th': vapor_calderas,
             'OUT_Cogeneracion_PotenciaElectrica_MW': mw_elec,
-            'OUT_VaporEvap_th': vapor_evap_th,
+            'Caudal vapor entrada Evaporación (t/h)': vapor_evap_th,
             'OUT_KPI_RendimientoAzucar_pct': (float(m6.get('Caudal de Azúcar a Silo', 0.0)) / molienda) * 100.0 if molienda > 0 else 0.0
         })
         return out
@@ -725,7 +725,7 @@ resultados = planta.simular()
 st.markdown("### 📈 Indicadores Clave de Rendimiento (KPIs)")
 
 molienda_td = in_molienda * 24.0
-vap_evap_th = resultados['M9'].get('OUT_VaporEvap_th', 0.0)
+vap_evap_th = resultados['M9'].get('Caudal vapor entrada Evaporación (t/h)', 0.0)
 correfino_td = float(config_usuario['OP_AzucarCorefin_th']) * 24.0
 az_comercial = resultados['M6'].get('Caudal de Azúcar a Silo', 0.0)
 pot_mw = resultados['M9'].get('OUT_Cogeneracion_PotenciaElectrica_MW', 0.0)
