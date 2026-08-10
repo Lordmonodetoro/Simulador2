@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import fsolve
 import io
+from fpdf import FPDF
 
 # ====================================================================
 # CONFIGURACIÓN DE PÁGINA STREAMLIT
@@ -576,10 +577,13 @@ class PlantaAzucareraCompleta:
         rend_termico = float(c['OP_SecaderoPulpa_RendimientoTérmico_pct']) / 100.0
         gas_m3h = (agua_evap_sec * 1000.0 * 1.05) / (float(c['OP_SecaderoPulpa_PCI_Gas_kWh_m3']) * rend_termico) if rend_termico > 0.0 else 0.0
 
-        vapor_calderas = float(m5.get('Caudal Vapor a Evaporación. (t/h)', 0.0)) + float(m4.get('Consumo vapor R14 (JAE)', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
-        mw_elec = (vapor_calderas * float(c['OP_Turbina_ConsumoEspecifico_kWh_tVapor'])) / 1000.0
-
         vapor_evap_th = float(m5.get('Caudal Vapor a Evaporación. (t/h)', 0.0))
+        # Cogeneración (mw_elec) ahora SOLAMENTE tiene en cuenta el vapor de entrada a evaporación
+        mw_elec = (vapor_evap_th * float(c['OP_Turbina_ConsumoEspecifico_kWh_tVapor'])) / 1000.0
+
+        # El vapor vivo total de calderas (para el balance macro)
+        vapor_calderas = vapor_evap_th + float(m4.get('Consumo vapor R14 (JAE)', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
+        
         molienda = float(c['IN_Molienda_th'])
 
         out.update({
@@ -631,7 +635,7 @@ with st.sidebar.expander("🌱 Materia Prima & Módulo 1 (Difusión)", expanded=
     in_riqueza = st.slider("Riqueza_Remolacha_pct (%)", 12.0, 22.0, 17.4, 0.1)
     in_pureza = st.slider("Pureza_Agricola_pct (%)", 85.0, 95.0, 90.4, 0.1)
     in_marc = st.slider("Marc_Fibra_pct (%)", 3.0, 7.0, 4.5, 0.1)
-    op_ratio_ext = st.slider("Ratio_Extraccion", 1.0, 1.3, 1.11, 0.01)
+    op_ratio_ext = st.slider("Draft", 1.0, 1.3, 1.11, 0.01)
     op_ms_pulpa = st.slider("MS_PulpaPrensada_pct (%)", 20.0, 35.0, 27.5, 0.5)
     op_temp_verde = st.slider("Temp_Jugoverde_C (°C)", 15.0, 40.0, 26.0, 0.5)
     op_ratio_aporte = st.slider("Ratio_AguaAporte_pct (%)", 15.0, 35.0, 24.93, 0.1)
@@ -682,7 +686,7 @@ with st.sidebar.expander("♨️ Módulo 4 (Thin Juice Heating)", expanded=False
 with st.sidebar.expander("💨 Módulo 5 (Evaporación)", expanded=False):
     op_evap_brix_obj = st.slider("Evaporacion_BrixSalida_objetivo_pct (%)", 60.0, 75.0, 69.4, 0.1)
 
-with st.sidebar.expander("🍬 Módulo 6 (Caudal Polvo y Granzas Secadero (t/h) ) & 9 (Energía)", expanded=False):
+with st.sidebar.expander("🍬 Módulo 6 (Cuarto de Azúcar) & 9 (Energía)", expanded=False):
     op_brix_masa_a = st.slider("Cuarto de Azúcar_BrixMasaA_pct (%)", 85.0, 95.0, 91.0, 0.1)
     op_brix_masa_b = st.slider("Cuarto de Azúcar_BrixMasaB_pct (%)", 90.0, 98.0, 94.6, 0.1)
     op_brix_masa_c = st.slider("Cuarto de Azúcar_BrixMasaC_pct (%)", 90.0, 98.0, 95.3, 0.1)
@@ -806,28 +810,74 @@ with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
 with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
 
 # ====================================================================
+# GENERADOR PDF
+# ====================================================================
+def clean_text_for_pdf(text):
+    """Limpia caracteres especiales incompatibles con la fuente básica de FPDF"""
+    replacements = {
+        'º': 'o', 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+        'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'ñ': 'n', 'Ñ': 'N', '²': '2'
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    return text.encode('latin-1', 'replace').decode('latin-1')
+
+def create_master_pdf(resultados, nombres_modulos, clasificar_variable_bloque):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Título Principal
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt="Gemelo Digital ACOR 2026 - Reporte Maestro", ln=True, align='C')
+    pdf.ln(10)
+    
+    for m_key, m_titulo in nombres_modulos.items():
+        if m_key not in resultados:
+            continue
+        
+        # Título del módulo
+        pdf.set_font("Arial", 'B', 12)
+        pdf.set_text_color(0, 51, 102) 
+        pdf.cell(200, 10, txt=clean_text_for_pdf(m_titulo), ln=True, align='L')
+        pdf.set_text_color(0, 0, 0)
+        
+        bloques = {'Proceso': {}, 'Laboratorio': {}, 'Energía': {}, 'Otros': {}}
+        for k, v in resultados[m_key].items():
+            if isinstance(v, dict):
+                for sub_k, sub_v in v.items():
+                    cat = clasificar_variable_bloque(sub_k)
+                    bloques[cat][f"{k} -> {sub_k}"] = sub_v
+            else:
+                cat = clasificar_variable_bloque(k)
+                bloques[cat][k] = v
+                
+        for b_name, b_data in bloques.items():
+            if not b_data: 
+                continue
+            # Subtítulo del bloque (Proceso, Energía...)
+            pdf.set_font("Arial", 'B', 10)
+            pdf.cell(200, 6, txt=clean_text_for_pdf(f"  [{b_name}]"), ln=True, align='L')
+            
+            # Variables y valores
+            pdf.set_font("Arial", '', 10)
+            for pk, pv in b_data.items():
+                pdf.cell(200, 5, txt=clean_text_for_pdf(f"    - {pk}: {pv}"), ln=True, align='L')
+        
+        pdf.ln(5) # Espacio entre módulos
+        
+    try:
+        # Compatible con FPDF2
+        return bytes(pdf.output())
+    except TypeError:
+        # Compatible con FPDF antiguo
+        return pdf.output(dest='S').encode('latin-1')
+
+# ====================================================================
 # REPORTE MAESTRO VISUAL ESTRUCTURADO EN 4 BLOQUES TÉCNICOS
 # ====================================================================
 with tabs[9]:
     st.subheader("📄 Reporte Maestro de Ingeniería por Módulos (Auditoría Integral)")
-    st.markdown("Panel visual interactivo que clasifica el comportamiento operativo en **Datos de Proceso, Laboratorio, Energía y Otros**, con exportación directa a Excel.")
-
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for m_key, m_data in resultados.items():
-            flat_data = {k: v for k, v in m_data.items() if not isinstance(v, dict)}
-            df_mod = pd.DataFrame(list(flat_data.items()), columns=['Parámetro del Proceso', 'Valor Calculado'])
-            df_mod.to_excel(writer, sheet_name=m_key, index=False)
-
-    excel_data = output.getvalue()
-    st.download_button(
-        label="📥 Descargar Reporte Completo en Excel (.xlsx)",
-        data=excel_data,
-        file_name="Gemelo_Digital_ACOR_Reporte_Maestro.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-    st.markdown("---")
+    st.markdown("Panel visual interactivo que clasifica el comportamiento operativo en **Datos de Proceso, Laboratorio, Energía y Otros**, con exportación directa a Excel o PDF.")
 
     def clasificar_variable_bloque(key_name):
         k_lower = key_name.lower()
@@ -835,7 +885,7 @@ with tabs[9]:
             return 'Laboratorio'
         elif any(w in k_lower for w in ['vapor', 'temp', 'calor', 'condensado', 'energia', 'gas', 'potencia', 'mw']):
             return 'Energía'
-        elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'lodos', 'lechada', 'co2', 'miel', 'agua', 'jarabe', 'entrada']):
+        elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'lodos', 'lechada', 'co2', 'miel', 'agua', 'jarabe', 'entrada', 'rto', 'caudal']):
             return 'Proceso'
         else:
             return 'Otros'
@@ -843,15 +893,48 @@ with tabs[9]:
     nombres_modulos = {
         'M1': 'Módulo 1: Difusiones y Prensas',
         'M2': 'Módulo 2: Calentamiento de Jugo verde',
-        'M3': 'Módulo 3: Depuración y Carbonataciones (Recalentador, Lechada, CO2, Sweet Water)',
+        'M3': 'Módulo 3: Depuración y Carbonataciones',
         'M4': 'Módulo 4: Thin Juice Heating',
-        'M5': 'Módulo 5: Estación de Evaporación (Caudales por efecto y Vapores)',
-        'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',  
-        'M6': 'Módulo 6: Cuarto de Azúcar y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  
+        'M5': 'Módulo 5: Estación de Evaporación',
+        'M7': 'Módulo 7: Refundición / Melter House',  
+        'M6': 'Módulo 6: Cuarto de Azúcar y Cristalización',  
         'M8': 'Módulo 8: Circuito de Condensados y Agua',
         'M9': 'Módulo 9: Secadero de Pulpa y Energía'
     }
 
+    # ------- BOTONES DE DESCARGA -------
+    col_btn1, col_btn2 = st.columns(2)
+    
+    with col_btn1:
+        output_excel = io.BytesIO()
+        with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
+            for m_key, m_data in resultados.items():
+                flat_data = {k: v for k, v in m_data.items() if not isinstance(v, dict)}
+                df_mod = pd.DataFrame(list(flat_data.items()), columns=['Parámetro del Proceso', 'Valor Calculado'])
+                df_mod.to_excel(writer, sheet_name=m_key, index=False)
+        excel_data = output_excel.getvalue()
+        
+        st.download_button(
+            label="📥 Descargar Reporte en Excel (.xlsx)",
+            data=excel_data,
+            file_name="Gemelo_Digital_ACOR_Reporte_Maestro.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+    with col_btn2:
+        pdf_data = create_master_pdf(resultados, nombres_modulos, clasificar_variable_bloque)
+        st.download_button(
+            label="📄 Descargar Reporte en PDF (.pdf)",
+            data=pdf_data,
+            file_name="Gemelo_Digital_ACOR_Reporte_Maestro.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+    st.markdown("---")
+
+    # ------- VISUALIZACIÓN EN PANTALLA -------
     for m_key, m_titulo in nombres_modulos.items():
         if m_key not in resultados:
             continue
@@ -871,14 +954,14 @@ with tabs[9]:
             col_b1, col_b2 = st.columns(2)
 
             with col_b1:
-                st.markdown("##### 🧪 1. Datos de Proceso (Caudales y Fluidos)")
+                st.markdown("##### 🧪 1. Datos de Proceso")
                 if bloques['Proceso']:
                     df_proc = pd.DataFrame(list(bloques['Proceso'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_proc, use_container_width=True, hide_index=True)
                 else:
                     st.info("Sin registros de proceso en este módulo.")
 
-                st.markdown("##### 🔬 2. Datos de Laboratorio (Brix, Pureza, No-Azúcares)")
+                st.markdown("##### 🔬 2. Datos de Laboratorio")
                 if bloques['Laboratorio']:
                     df_lab = pd.DataFrame(list(bloques['Laboratorio'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_lab, use_container_width=True, hide_index=True)
@@ -886,14 +969,14 @@ with tabs[9]:
                     st.info("Sin registros de laboratorio en este módulo.")
 
             with col_b2:
-                st.markdown("##### 🔥 3. Datos de Energía (Vapores, Condensados, Temperaturas)")
+                st.markdown("##### 🔥 3. Datos de Energía")
                 if bloques['Energía']:
                     df_ene = pd.DataFrame(list(bloques['Energía'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_ene, use_container_width=True, hide_index=True)
                 else:
                     st.info("Sin registros de energía en este módulo.")
 
-                st.markdown("##### 📦 4. Otros Parámetros y Balances Secundarios")
+                st.markdown("##### 📦 4. Otros Parámetros")
                 if bloques['Otros']:
                     df_otr = pd.DataFrame(list(bloques['Otros'].items()), columns=['Parámetro', 'Valor'])
                     st.dataframe(df_otr, use_container_width=True, hide_index=True)
