@@ -220,7 +220,7 @@ class PlantaAzucareraCompleta:
 
         return out
 
-    def mod_6_Cuarto de Azúcar(self, m1, m7):
+    def mod_6_Cuarto_de_Azucar(self, m1, m7):
         c = self.config
         out = {}
         molienda = float(m1.get('OUT_RemolachaProcesada_th', float(c['IN_Molienda_th'])))
@@ -232,26 +232,26 @@ class PlantaAzucareraCompleta:
         P_liq = float(m7.get('OUT_Caudal_LicorEstandar_Pureza_pct', 93.5))
 
         def modelo_pan_centrifuga_A(vars, *args):
-            F_masa, F_azucar, F_verde, F_Miel Rica, Agua = vars
+            F_masa, F_azucar, F_verde, F_Miel_Rica, Agua = vars
             MS_liq, Pol_liq, b_a = args
 
-            MS_Miel Rica = F_Miel Rica * 0.780
-            Pol_Miel Rica = MS_Miel Rica * 0.874
-            MS_masa = MS_liq + MS_Miel Rica
-            Pol_masa = Pol_liq + Pol_Miel Rica
+            MS_Miel_Rica = F_Miel_Rica * 0.780
+            Pol_Miel_Rica = MS_Miel_Rica * 0.874
+            MS_masa = MS_liq + MS_Miel_Rica
+            Pol_masa = Pol_liq + Pol_Miel_Rica
 
             eq_masa_flow = F_masa - (MS_masa / (b_a / 100.0))
 
-            eq_masa_total = (F_masa + Agua) - (F_azucar + F_verde + F_Miel Rica)
+            eq_masa_total = (F_masa + Agua) - (F_azucar + F_verde + F_Miel_Rica)
             MS_az = F_azucar * 0.999
             MS_ver = F_verde * 0.787
-            eq_sol = MS_masa - (MS_az + MS_ver + MS_Miel Rica)
+            eq_sol = MS_masa - (MS_az + MS_ver + MS_Miel_Rica)
 
             Pol_az = MS_az * 0.999
             Pol_ver = MS_ver * 0.837
-            eq_pol = Pol_masa - (Pol_az + Pol_ver + Pol_Miel Rica)
+            eq_pol = Pol_masa - (Pol_az + Pol_ver + Pol_Miel_Rica)
 
-            eq_op = F_Miel Rica - (0.25 * F_verde)
+            eq_op = F_Miel_Rica - (0.25 * F_verde)
             return [eq_masa_flow, eq_masa_total, eq_sol, eq_pol, eq_op]
 
         MS_liq = flujo_liq * (brix_liq / 100.0)
@@ -259,7 +259,7 @@ class PlantaAzucareraCompleta:
 
         est_a = [153.6 * f_escala, 72.5 * f_escala, 64.1 * f_escala, 16.0 * f_escala, 3.2 * f_escala]
         sol_a = fsolve(modelo_pan_centrifuga_A, est_a, args=(MS_liq, Pol_liq, brix_a))
-        f_masa_a, f_az_comercial, f_verde_a, f_Miel Rica_a, agua_lav_a = sol_a
+        f_masa_a, f_az_comercial, f_verde_a, f_Miel_Rica_a, agua_lav_a = sol_a
 
         F_in_b = f_verde_a * (67.53 / 64.14) if f_verde_a > 0 else 67.53 * f_escala
         F_in_c = F_in_b * (32.11 / 67.53) if F_in_b > 0 else 32.11 * f_escala
@@ -285,8 +285,8 @@ class PlantaAzucareraCompleta:
         masa_b = F_in_b
         masa_c = F_in_c
 
-        dem = (MS_liq + (f_Miel Rica_a * 0.780))
-        pur_a = (Pol_liq + (f_Miel Rica_a * 0.874)) / dem * 100 if dem > 0 else 93.5
+        dem = (MS_liq + (f_Miel_Rica_a * 0.780))
+        pur_a = (Pol_liq + (f_Miel_Rica_a * 0.874)) / dem * 100 if dem > 0 else 93.5
 
         out.update({
             'OUT_Caudal_MasaCocidaA_Flujo_th': float(f_masa_a),
@@ -307,7 +307,7 @@ class PlantaAzucareraCompleta:
             'OUT_Caudal_MelazaFinal_Brix_pct': 79.70,
             'OUT_Caudal_MelazaFinal_Pureza_pct': 57.20,
             'OUT_M6_MielVerdeA_th': float(f_verde_a),
-            'OUT_M6_MielMiel RicaA_th': float(f_Miel Rica_a * 0.25),
+            'OUT_M6_MielRicaA_th': float(f_Miel_Rica_a * 0.25),
             'OUT_M6_MielB_th': float(f_miel_b),
             'OUT_M6_AguaCentrifugas_th': float(agua_lav_a),
             'OUT_M6_RendimientoCristal_pct': float(92.4)
@@ -566,7 +566,7 @@ class PlantaAzucareraCompleta:
             m3 = self.mod_3_depuracion(m1, m2, m8)
             m4 = self.mod_4_calentamiento_jugo_Anteevaporación(m3)
             m7 = self.mod_7_refundicion(m5, m3, m6)
-            m6 = self.mod_6_Cuarto de Azúcar(m1, m7)
+            m6 = self.mod_6_Cuarto_de_Azucar(m1, m7)
             m7 = self.mod_7_refundicion(m5, m3, m6)
             m5 = self.mod_5_evaporacion(m4, m3, m6, m7, m1, m2)
             m8 = self.mod_8_condensados_agua(m5, m6, m4, m3, m1, m2, m7)
@@ -653,7 +653,7 @@ with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=
     op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
     op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
-    op_turb_cons = 90.0
+    op_turb_cons = 950.0
 
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
@@ -664,9 +664,9 @@ config_usuario = {
     'OP_DifPren_Int17_TempIn_C': op_int17_tin, 'OP_DifPren_Int17_TempOut_C': op_int17_tout,
     'OP_DifPren_Int18_19_TempIn_C': op_int18_tin, 'OP_DifPren_Int18_19_TempOut_C': op_int18_tout,
     'OP_DifPren_Int20_TempIn_C': op_int20_tin, 'OP_DifPren_Int20_TempOut_C': op_int20_tout,
-    'OP_Calverde_Int00_TempOut_C': op_int00_tout, 'OP_Calverde_Int0_TempOut_C': op_int0_tout, 'OP_Calverde_Int1_TempOut_C': op_int1_tout,
+    'OP_CalCrudo_Int00_TempOut_C': op_int00_tout, 'OP_CalCrudo_Int0_TempOut_C': op_int0_tout, 'OP_CalCrudo_Int1_TempOut_C': op_int1_tout,
     'OP_Recalentador15_Vapor_Fuente': 'Vapor_4toEfecto', 'OP_AzucarCorefin_th': op_corefin_th,
-    'OP_Calverde_Int2_TempOut_C': op_int2_tout, 'OP_Calverde_Int3_TempOut_C': op_int3_tout, 'OP_Calverde_Int3a_TempOut_C': op_int3a_tout,
+    'OP_CalCrudo_Int2_TempOut_C': op_int2_tout, 'OP_CalCrudo_Int3_TempOut_C': op_int3_tout, 'OP_CalCrudo_Int3a_TempOut_C': op_int3a_tout,
     'OP_Depuracion_CaO_pct_remolacha': op_cao_pct, 'OP_1raCarb_AlcalinidadEntrada_gh': op_alc1_in,
     'OP_1raCarb_AlcalinidadSalida': op_alc1_out, 'OP_2daCarb_AlcalinidadSalida': op_alc2_out, 'OP_PKF_MS_Lodos_pct': op_pkf_ms,
     'OP_Calent_3B_TempEntrada_C': op_c3b_tin, 'OP_Calent_3B_TempSalida_C': op_c3b_tout, 'OP_Calent_4_TempSalida_C': op_c4_tout,
@@ -690,7 +690,7 @@ st.markdown("### 📈 Indicadores Clave de Rendimiento (KPIs)")
 
 molienda_td = in_molienda * 24.0
 vap_evap_th = resultados['M9'].get('OUT_VaporEvap_th', 0.0)
-correAnteevaporación_td = float(config_usuario['OP_AzucarCorefin_th']) * 24.0
+correfino_td = float(config_usuario['OP_AzucarCorefin_th']) * 24.0
 az_comercial = resultados['M6'].get('OUT_Caudal_AzucarComercial_Flujo_th', 0.0)
 pot_mw = resultados['M9'].get('OUT_Cogeneracion_PotenciaElectrica_MW', 0.0)
 
@@ -716,8 +716,8 @@ with kpi2:
     ok_v = vap_evap_th < 115.0
     st.markdown(render_kpi_card("⚡ Vapor a Evaporación", f"{vap_evap_th:.2f} t/h", "Objetivo < 115 t/h", ok_v), unsafe_allow_html=True)
 with kpi3:
-    ok_c = correAnteevaporación_td > 200.0
-    st.markdown(render_kpi_card("🍬 CorreAnteevaporación Total", f"{correAnteevaporación_td:.2f} T/día", "Objetivo > 200 T/día", ok_c), unsafe_allow_html=True)
+    ok_c = correfino_td > 200.0
+    st.markdown(render_kpi_card("🍬 Correfino Total", f"{correfino_td:,.2f} T/día", "Objetivo > 200 T/día", ok_c), unsafe_allow_html=True)
 
 kpi4, kpi5, kpi6 = st.columns(3)
 with kpi4:
@@ -764,8 +764,8 @@ with tabs[1]: render_modulo_tab('M2', 'Módulo 2: Calentamiento de Jugo verde')
 with tabs[2]: render_modulo_tab('M3', 'Módulo 3: Depuración y Carbonataciones')
 with tabs[3]: render_modulo_tab('M4', 'Módulo 4: Thin Juice Heating')
 with tabs[4]: render_modulo_tab('M5', 'Módulo 5: Estación de Evaporación')
-with tabs[5]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')  # Adelantado
-with tabs[6]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')  # Posicionado después
+with tabs[5]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')  
+with tabs[6]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')  
 with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
 with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
 
@@ -799,20 +799,19 @@ with tabs[9]:
             return 'Laboratorio'
         elif any(w in k_lower for w in ['vapor', 'temp', 'calor', 'condensado', 'energia', 'gas', 'potencia', 'mw']):
             return 'Energía'
-        elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'Lodos', 'lechada', 'co2', 'miel', 'agua', 'jarabe', 'entrada']):
+        elif any(w in k_lower for w in ['flujo', 'th', 'th_', 'th.', 'produccion', 'molienda', 'pulpa', 'pellet', 'lodos', 'lechada', 'co2', 'miel', 'agua', 'jarabe', 'entrada']):
             return 'Proceso'
         else:
             return 'Otros'
 
-    # Orden del reporte maestro también actualizado (M7 antes de M6)
     nombres_modulos = {
         'M1': 'Módulo 1: Difusiones y Prensas',
         'M2': 'Módulo 2: Calentamiento de Jugo verde',
         'M3': 'Módulo 3: Depuración y Carbonataciones (Recalentador, Lechada, CO2, Sweet Water)',
         'M4': 'Módulo 4: Thin Juice Heating',
         'M5': 'Módulo 5: Estación de Evaporación (Caudales por efecto y Vapores)',
-        'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',  # Adelantado
-        'M6': 'Módulo 6: Cocimiento y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  # Después
+        'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',  
+        'M6': 'Módulo 6: Cocimiento y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  
         'M8': 'Módulo 8: Circuito de Condensados y Agua',
         'M9': 'Módulo 9: Secadero de Pulpa y Energía'
     }
