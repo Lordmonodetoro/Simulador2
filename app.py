@@ -259,9 +259,9 @@ class PlantaAzucareraCompleta:
         f_escala = molienda / 445.0
         brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
 
-        flujo_liq = float(m7.get('OUT_Caudal_LicorEstandar_Flujo_th', 172.19 * f_escala))
-        brix_liq = float(m7.get('OUT_Caudal_LicorEstandar_Brix_pct', 73.90))
-        P_liq = float(m7.get('OUT_Caudal_LicorEstandar_Pureza_pct', 93.5))
+        flujo_liq = float(m7.get('Caudal Jarabe Standar (t/h)', 172.19 * f_escala))
+        brix_liq = float(m7.get('Brix Jarabe Standar (ºBx)', 73.90))
+        P_liq = float(m7.get('Pureza Jarabe Standar (ºPz)', 93.5))
 
         def modelo_pan_centrifuga_A(vars, *args):
             F_masa, F_azucar, F_verde, F_Miel_Rica, Agua = vars
@@ -390,15 +390,15 @@ class PlantaAzucareraCompleta:
         pureza_liquor_estandar = (pol_total_th / masa_seca_total_th) * 100.0 if masa_seca_total_th > 0 else 93.50
 
         out.update({
-            'OUT_Recalentador15_VaporConsumo_th': vapor_requerido_th,
-            'OUT_Caudal_LicorEstandar_Flujo_th': flujo_liquor_estandar_th,
-            'OUT_Caudal_LicorEstandar_Brix_pct': brix_liquor_estandar,
-            'OUT_Caudal_LicorEstandar_Pureza_pct': pureza_liquor_estandar,
-            'OUT_Caudal_LicorEstandar_Temp_C': temp_salida_C,
-            'OUT_Caudal_CorreAnteevaporaciónEntrante_th': flujo_total_entrante_th,
-            'OUT_M7_Entrada_JarabeEvap_th': float(flujo_jarabe_evap_th),
-            'OUT_M7_Entrada_AzucarB_th': float(flujo_azucar_b_th),
-            'OUT_M7_Entrada_AzucarPolvo_th': float(flujo_polvo),
+            'Consumo vapor R15 (Rec. Refundidora)': vapor_requerido_th,
+            'Caudal Jarabe Standar (t/h)': flujo_liquor_estandar_th,
+            'Brix Jarabe Standar (ºBx)': brix_liquor_estandar,
+            'Pureza Jarabe Standar (ºPz)': pureza_liquor_estandar,
+            'Tª Jarabe Standar (ºC)': temp_salida_C,
+            'Caudal Jugo Anteevaporación (kg/h) ': flujo_total_entrante_th,
+            'Caudal Jarabe Entrada (t/h) ': float(flujo_jarabe_evap_th),
+            'Caudal Azúcar B (t/h) ': float(flujo_azucar_b_th),
+            'Caudal Polvo y Granzas Secadero (t/h) ': float(flujo_polvo),
             'OUT_M7_Entrada_JugoAnteevaporaciónMelting_th': float(flujo_jugo_Anteevaporación_th)
         })
         return out
@@ -414,25 +414,25 @@ class PlantaAzucareraCompleta:
         SANGRIA_FIJA = 0.30
         D = [0.0] * 6
         d_v1_h13 = float(m4.get('Consumo vapor R13 (JAE)', 0.0))
-        d_v1_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_1erEfecto' else 0.0
+        d_v1_m7 = float(m7.get('Consumo vapor R15 (Rec. Refundidora)', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_1erEfecto' else 0.0
         D[0] = d_v1_h13 + d_v1_m7 + SANGRIA_FIJA
 
         d_v2_h11 = float(m4.get('Consumo vapor R11 (JAE)', 0.0))
         d_v2_h12 = float(m4.get('Consumo vapor R12 (JAE)', 0.0))
-        d_v2_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_2doEfecto' else 0.0
+        d_v2_m7 = float(m7.get('Consumo vapor R15 (Rec. Refundidora)', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_2doEfecto' else 0.0
         d_v2_sec = float(m6.get('OUT_SecaderoAzucar_Vapor_th', 0.0))
         D[1] = d_v2_h11 + d_v2_h12 + d_v2_m7 + d_v2_sec + 3.00 + SANGRIA_FIJA
 
         d_v3_h10 = float(m4.get('Consumo vapor R10 (JAE)', 0.0))
         d_v3_h9 = float(m3.get('Consumo vapor R9 (J.Claro) (t/h)', 0.0))
         d_v3_tb = float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 0.0))
-        d_v3_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_3erEfecto' else 0.0
+        d_v3_m7 = float(m7.get('Consumo vapor R15 (Rec. Refundidora)', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_3erEfecto' else 0.0
         D[2] = d_v3_h10 + d_v3_h9 + d_v3_tb + d_v3_m7 + SANGRIA_FIJA
 
         d_v4_h7 = float(m3.get('Consumo vapor R7 (J.Encalado frío) (t/h)', 0.0))
         d_v4_ta = float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 0.0))
         d_v4_tc = float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 0.0))
-        d_v4_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_4toEfecto' else 0.0
+        d_v4_m7 = float(m7.get('Consumo vapor R15 (Rec. Refundidora)', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_4toEfecto' else 0.0
         D[3] = d_v4_h7 + d_v4_ta + d_v4_tc + d_v4_m7 + SANGRIA_FIJA
 
         d_v5_h56 = float(m3.get('Consumo vapor R5+R6 (J.Encalado frío) (t/h)', 0.0))
@@ -517,7 +517,7 @@ class PlantaAzucareraCompleta:
 
     def mod_8_condensados_agua(self, m5, m6, m4, m3, m1, m2, m7):
         out = {}
-        reRecalentador_15_vapor_th = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.48))
+        reRecalentador_15_vapor_th = float(m7.get('Consumo vapor R15 (Rec. Refundidora)', 0.48))
         cond_cascada_evaporacion = float(m5.get('OUT_Condensado_CascadaFinal_9635_th', 246.50))
 
         fuentes_9635 = [
