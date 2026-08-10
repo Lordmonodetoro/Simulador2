@@ -95,8 +95,8 @@ class PlantaAzucareraCompleta:
         out.update({
             'Remolacha Procesada (t/h)': molienda,
             'Caudal Jugo Verde (t/h)': flujo_jugo,
-            'Brix Jugo Verde (t/h)': 17.16,
-            'Pureza Jugo Verde (t/h)': float(c['IN_Pureza_Agricola_pct']),
+            'Brix Jugo Verde (ºBx)': 17.16,
+            'Pureza Jugo Verde (ºpz)': float(c['IN_Pureza_Agricola_pct']),
             'Caudal de pulpa prensada (t/h)': pulpa_prensada_th,
             'Consumo vapor R17 (Agua Prensas)': vap_17,
             'Consumo vapor R18+R19 (Recir. Torre/Macerador)': vap_18_19,
@@ -109,8 +109,8 @@ class PlantaAzucareraCompleta:
         out = {}
 
         flujo_jugo = float(m1['Caudal Jugo Verde (t/h)'])
-        ds_jugo = float(m1['Brix Jugo Verde (t/h)'])
-        pur_jugo = float(m1['Pureza Jugo Verde (t/h)'])
+        ds_jugo = float(m1['Brix Jugo Verde (ºBx)'])
+        pur_jugo = float(m1['Pureza Jugo Verde (ºpz)'])
         t_in = float(c['OP_DifPren_Temp_Jugoverde_C'])
 
         cp_jugo = 1.0 - (0.005 * ds_jugo)
@@ -165,9 +165,9 @@ class PlantaAzucareraCompleta:
         t_out_56 = float(c['OP_Calent_56_TempSalida_C'])
         t_out_7 = float(c['OP_Calent_7_TempSalida_C'])
         
-        out['OUT_Recalentador4_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_4 - t_out_3b)) / self.cat_vap['Vapor_6toEfecto']['entalpia']
-        out['OUT_Recalentador5_6_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
-        out['OUT_Recalentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
+        out['Consumo vapor R4 (J.Encalado frío)'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_4 - t_out_3b)) / self.cat_vap['Vapor_6toEfecto']['entalpia']
+        out['Consumo vapor R5+R6 (J.Encalado frío) (t/h)'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_56 - t_out_4)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
+        out['Consumo vapor R7 (J.Encalado frío) (t/h)'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
         
         pol_lost_mud = molienda * 0.0004
         undefined_losses = 1.50 * f_escala 
@@ -180,7 +180,7 @@ class PlantaAzucareraCompleta:
         flujo_claro_aprox = flujo_etapa_2 + co2_total - Lodos_1ro_humedos - agua_lechada_interna
         
         t_out_no8 = float(c['OP_Calent_No8_TempSalida_C'])
-        out['OUT_Recalentador8_Vapor_th'] = (flujo_claro_aprox * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
+        out['Consumo vapor R8 (J.Turbio 1ª) (t/h)'] = (flujo_claro_aprox * cp_jugo * max(0.0, t_out_no8 - t_out_1ra_carb)) / self.cat_vap['Vapor_5toEfecto']['entalpia']
         
         evap_agua_1ra = 1.75 * f_escala
         evap_agua_2da = 0.80 * f_escala
@@ -190,7 +190,7 @@ class PlantaAzucareraCompleta:
         flujo_etapa_4 = flujo_claro_aprox + azucar_baja + agua_lavado_filtros
         
         t_out_no9 = float(c['OP_Calent_No9_TempSalida_C'])
-        out['OUT_Recalentador9_Vapor_th'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
+        out['Consumo vapor R9 (J.Claro) (t/h)'] = (flujo_etapa_4 * cp_jugo * max(0.0, t_out_no9 - t_out_1ra_filt)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
         t_out_2da_carb = t_out_no9 - float(c['OP_Enfriamiento_2daCarb_C'])
         
         flujo_jugo_Anteevaporación_total = (flujo_jugo_entrada + t_CaO_total + co2_total + 
@@ -207,8 +207,8 @@ class PlantaAzucareraCompleta:
         flujo_jugo_Anteevaporación_mod4 = max(0.1, flujo_jugo_Anteevaporación_total - flujo_jugo_Anteevaporación_melting)
         
         out.update({
-            'OUT_Caudal_JugoAnteevaporaciónTotal_Flujo_th': flujo_jugo_Anteevaporación_total,
-            'OUT_Caudal_JugoAnteevaporaciónTotal_Brix_pct': brix_Anteevaporación,
+            'Caudal Jugo Anteevaporación (t/h)': flujo_jugo_Anteevaporación_total,
+            'Brix Jugo Anteevaporación (ºBx)': brix_Anteevaporación,
             'OUT_Caudal_JugoAnteevaporaciónTotal_Pureza_pct': pureza_Anteevaporación,
             'OUT_JugoAnteevaporación_ParaModulo4_Calentamiento_th': flujo_jugo_Anteevaporación_mod4,
             'OUT_JugoAnteevaporación_Temp_C': t_out_2da_carb,
@@ -227,7 +227,7 @@ class PlantaAzucareraCompleta:
         cp_jugo = 0.96
 
         flujo_jugo_Anteevaporación = float(m3.get('OUT_JugoAnteevaporación_ParaModulo4_Calentamiento_th', 516.0))
-        brix_Anteevaporación = float(m3.get('OUT_Caudal_JugoAnteevaporaciónTotal_Brix_pct', 18.40))
+        brix_Anteevaporación = float(m3.get('Brix Jugo Anteevaporación (ºBx)', 18.40))
         pur_Anteevaporación = float(m3.get('OUT_Caudal_JugoAnteevaporaciónTotal_Pureza_pct', 91.60))
         temp_entrada = float(m3.get('OUT_JugoAnteevaporación_Temp_C', 87.3))
 
@@ -246,8 +246,8 @@ class PlantaAzucareraCompleta:
         out['OUT_Recalentador14_Vapor_th'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_14 - t_13)) / self.cat_vap['Vapor_Escape']['entalpia']
 
         out['OUT_Caudal_JugoAnteevaporaciónCalentado_Flujo_th'] = flujo_jugo_Anteevaporación
-        out['OUT_Caudal_JugoAnteevaporaciónCalentado_Brix_pct'] = brix_Anteevaporación
-        out['OUT_Caudal_JugoAnteevaporaciónCalentado_Pureza_pct'] = pur_Anteevaporación
+        out['Brix Jugo Anteevaporación (t/h)'] = brix_Anteevaporación
+        out['Pureza Jugo Anteevaporación (%)'] = pur_Anteevaporación
         out['OUT_JugoAnteevaporaciónCalentado_Temp_C'] = t_14
 
         return out
@@ -357,8 +357,8 @@ class PlantaAzucareraCompleta:
         brix_jarabe_evap = float(m5.get('OUT_Caudal_Jarabe_Brix_pct', 69.40))
         pur_jarabe_evap = float(m5.get('OUT_Caudal_Jarabe_Pureza_pct', 91.60))
 
-        flujo_jugo_Anteevaporación_th = float(m3.get('OUT_Caudal_JugoAnteevaporaciónTotal_Flujo_th', 0.0)) * (float(c['OP_JugoAnteevaporación_DestinoMelting_pct'])/100.0)
-        brix_jugo_Anteevaporación_pct = float(m3.get('OUT_Caudal_JugoAnteevaporaciónTotal_Brix_pct', 18.40))
+        flujo_jugo_Anteevaporación_th = float(m3.get('Caudal Jugo Anteevaporación (t/h)', 0.0)) * (float(c['OP_JugoAnteevaporación_DestinoMelting_pct'])/100.0)
+        brix_jugo_Anteevaporación_pct = float(m3.get('Brix Jugo Anteevaporación (ºBx)', 18.40))
         pur_jugo_Anteevaporación_pct = float(m3.get('OUT_Caudal_JugoAnteevaporaciónTotal_Pureza_pct', 91.60))
 
         flujo_azucar_b_th = float(m6.get('OUT_Caudal_AzucarB_Fundicion_Flujo_th', 32.48))
@@ -408,7 +408,7 @@ class PlantaAzucareraCompleta:
         out = {}
         flujo_entrada = float(m4.get('OUT_Caudal_JugoAnteevaporaciónCalentado_Flujo_th', 500.0))
         temp_entrada = float(m4.get('OUT_JugoAnteevaporaciónCalentado_Temp_C', 123.8))
-        brix_entrada = float(m4.get('OUT_Caudal_JugoAnteevaporaciónCalentado_Brix_pct', 18.40))
+        brix_entrada = float(m4.get('Brix Jugo Anteevaporación (t/h)', 18.40))
         if brix_entrada <= 0 or brix_entrada > 40: brix_entrada = 18.40
 
         SANGRIA_FIJA = 0.30
@@ -424,19 +424,19 @@ class PlantaAzucareraCompleta:
         D[1] = d_v2_h11 + d_v2_h12 + d_v2_m7 + d_v2_sec + 3.00 + SANGRIA_FIJA
 
         d_v3_h10 = float(m4.get('OUT_Recalentador10_Vapor_th', 0.0))
-        d_v3_h9 = float(m3.get('OUT_Recalentador9_Vapor_th', 0.0))
+        d_v3_h9 = float(m3.get('Consumo vapor R9 (J.Claro) (t/h)', 0.0))
         d_v3_tb = float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 0.0))
         d_v3_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_3erEfecto' else 0.0
         D[2] = d_v3_h10 + d_v3_h9 + d_v3_tb + d_v3_m7 + SANGRIA_FIJA
 
-        d_v4_h7 = float(m3.get('OUT_Recalentador7_Vapor_th', 0.0))
+        d_v4_h7 = float(m3.get('Consumo vapor R7 (J.Encalado frío) (t/h)', 0.0))
         d_v4_ta = float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 0.0))
         d_v4_tc = float(m6.get('OUT_Vapor4_Demanda_CristalizacionC_th', 0.0))
         d_v4_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_4toEfecto' else 0.0
         D[3] = d_v4_h7 + d_v4_ta + d_v4_tc + d_v4_m7 + SANGRIA_FIJA
 
-        d_v5_h56 = float(m3.get('OUT_Recalentador5_6_Vapor_th', 0.0))
-        d_v5_h8 = float(m3.get('OUT_Recalentador8_Vapor_th', 0.0))
+        d_v5_h56 = float(m3.get('Consumo vapor R5+R6 (J.Encalado frío) (t/h)', 0.0))
+        d_v5_h8 = float(m3.get('Consumo vapor R8 (J.Turbio 1ª) (t/h)', 0.0))
         d_v5_h17 = float(m1.get('Consumo vapor R17 (Agua Prensas)', 0.0))
         d_v5_h18 = float(m1.get('Consumo vapor R18+R19 (Recir. Torre/Macerador)', 0.0))
         d_v5_h20 = float(m1.get('Consumo vapor R20 (Desespumado)', 0.0))
@@ -491,7 +491,7 @@ class PlantaAzucareraCompleta:
         out.update({
             'OUT_Caudal_Jarabe_Flujo_th': float(F_out_calc[-1]),
             'OUT_Caudal_Jarabe_Brix_pct': float(Brix_out_calc[-1]),
-            'OUT_Caudal_Jarabe_Pureza_pct': float(m4.get('OUT_Caudal_JugoAnteevaporaciónCalentado_Pureza_pct', 91.60)),
+            'OUT_Caudal_Jarabe_Pureza_pct': float(m4.get('Pureza Jugo Anteevaporación (%)', 91.60)),
             'OUT_Evaporacion_AguaTotalEvaporada_th': float(sum(V_evap_calc)),
             'OUT_M5_Demanda_V1_Total_th': float(D[0]),
             'OUT_M5_Demanda_V2_Total_th': float(D[1]),
@@ -522,15 +522,15 @@ class PlantaAzucareraCompleta:
 
         fuentes_9635 = [
             {'nombre': 'Condensado Evaporación Cascado', 'flujo_th': cond_cascada_evaporacion},
-            {'nombre': 'ReRecalentador Nº 7 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador7_Vapor_th', 0.0))},
+            {'nombre': 'ReRecalentador Nº 7 (M3)', 'flujo_th': float(m3.get('Consumo vapor R7 (J.Encalado frío) (t/h)', 0.0))},
             {'nombre': 'ReRecalentador Nº 10 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador10_Vapor_th', 26.44))},
             {'nombre': 'ReRecalentador Nº 11 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador11_Vapor_th', 1.25))},
             {'nombre': 'ReRecalentador Nº 12 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador12_Vapor_th', 1.92))},
             {'nombre': 'ReRecalentador Nº 13 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador13_Vapor_th', 1.98))},
-            {'nombre': 'Recalentador Nº 9 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador9_Vapor_th', 6.32))},
-            {'nombre': 'Recalentador Nº 4 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador4_Vapor_th', 16.08))},
-            {'nombre': 'Recalentadores Nº 5+6 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador5_6_Vapor_th', 5.32))},
-            {'nombre': 'Recalentador Nº 8 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador8_Vapor_th', 0.29))},
+            {'nombre': 'Recalentador Nº 9 (M3)', 'flujo_th': float(m3.get('Consumo vapor R9 (J.Claro) (t/h)', 6.32))},
+            {'nombre': 'Recalentador Nº 4 (M3)', 'flujo_th': float(m3.get('Consumo vapor R4 (J.Encalado frío)', 16.08))},
+            {'nombre': 'Recalentadores Nº 5+6 (M3)', 'flujo_th': float(m3.get('Consumo vapor R5+R6 (J.Encalado frío) (t/h)', 5.32))},
+            {'nombre': 'Recalentador Nº 8 (M3)', 'flujo_th': float(m3.get('Consumo vapor R8 (J.Turbio 1ª) (t/h)', 0.29))},
             {'nombre': 'Agua Prensa Difusión Nº 17 (M1)', 'flujo_th': float(m1.get('Consumo vapor R17 (Agua Prensas)', 3.04))},
         ]
         total_9635 = sum(item['flujo_th'] for item in fuentes_9635)
@@ -773,7 +773,7 @@ st.markdown("---")
 # ====================================================================
 tabs = st.tabs([
     "M1: Difusión",
-    "M2: Cal verde",
+    "M2: Calent. Jugo Verde",
     "M3: Depuración",
     "M4: Jugo Anteevaporación",
     "M5: Evaporación",
