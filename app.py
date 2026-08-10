@@ -93,7 +93,7 @@ class PlantaAzucareraCompleta:
         vap_20 = (f_desesp * 1.0 * dt_20) / self.cat_vap['Vapor_5toEfecto']['entalpia']
 
         out.update({
-            'OUT_RemolachaProcesada_th': molienda,
+            'Remolacha Procesada (t/h)': molienda,
             'OUT_Caudal_Jugoverde_Flujo_th': flujo_jugo,
             'OUT_Caudal_Jugoverde_Brix_pct': 17.16,
             'OUT_Caudal_Jugoverde_Pureza_pct': float(c['IN_Pureza_Agricola_pct']),
@@ -138,7 +138,7 @@ class PlantaAzucareraCompleta:
     def mod_3_depuracion(self, m1, m2, m8):
         c = self.config
         out = {}
-        molienda = float(m1['OUT_RemolachaProcesada_th'])
+        molienda = float(m1['Remolacha Procesada (t/h)'])
         f_escala = molienda / 445.0
         
         flujo_jugo_entrada = float(m2['OUT_Caudal_JugoverdeCaliente_Flujo_th'])
@@ -255,7 +255,7 @@ class PlantaAzucareraCompleta:
     def mod_6_Cuarto_de_Azucar(self, m1, m7):
         c = self.config
         out = {}
-        molienda = float(m1.get('OUT_RemolachaProcesada_th', float(c['IN_Molienda_th'])))
+        molienda = float(m1.get('Remolacha Procesada (t/h)', float(c['IN_Molienda_th'])))
         f_escala = molienda / 445.0
         brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
 
@@ -537,7 +537,7 @@ class PlantaAzucareraCompleta:
         flash_9635 = total_9635 * 0.045
         neto_liquido_9635 = total_9635 - flash_9635
 
-        scrubber_th = float(m1.get('OUT_RemolachaProcesada_th', 445.0)) * (12.0 / 445.0)
+        scrubber_th = float(m1.get('Remolacha Procesada (t/h)', 445.0)) * (12.0 / 445.0)
         intercambiador_3b_2080_1 = max(0.0, neto_liquido_9635 - scrubber_th)
 
         fuentes_9620 = [
