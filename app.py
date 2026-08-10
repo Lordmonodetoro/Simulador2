@@ -8,7 +8,7 @@ import io
 # CONFIGURACIÓN DE PÁGINA STREAMLIT
 # ====================================================================
 st.set_page_config(
-    page_title="Gemelo Digital ACOR 2026 | Termodinámica Pura",
+    page_title="Gemelo Digital ACOR 2026 | Termodinámica",
     page_icon="🏭",
     layout="wide"
 )
