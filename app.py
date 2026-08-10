@@ -19,15 +19,13 @@ st.set_page_config(
 def check_password():
     """Devuelve True si el usuario ha introducido la contraseña correcta."""
     def password_entered():
-        # AQUÍ DEFINES TU CONTRASEÑA:
         if st.session_state["password"] == "ACOR2026": 
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Borra la contraseña por seguridad
+            del st.session_state["password"] 
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # Primer inicio de sesión, mostrar input
         st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center;'>Por favor, introduce la credencial de ingeniería para acceder al Gemelo Digital.</p>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
@@ -35,7 +33,6 @@ def check_password():
             st.text_input("🔑 Contraseña:", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
-        # Contraseña incorrecta
         st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
@@ -43,11 +40,10 @@ def check_password():
             st.error("❌ Contraseña incorrecta. Acceso denegado.")
         return False
     else:
-        # Contraseña correcta
         return True
 
 if not check_password():
-    st.stop()  # Detiene la ejecución de todo el script de abajo si no hay login válido
+    st.stop() 
 
 # ====================================================================
 # CATÁLOGOS MAESTROS Y PROPIEDADES TERMODINÁMICAS
@@ -695,40 +691,10 @@ with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
     op_turb_cons = 95.0
 
-# -----------------
-# INICIO DE SESIÓN
-# -----------------
-def check_password():
-    def password_entered():
-        if st.session_state["password"] == "ACOR2026": 
-            st.session_state["password_correct"] = True
-            del st.session_state["password"] 
-        else:
-            st.session_state["password_correct"] = False
-
-    if "password_correct" not in st.session_state:
-        st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.text_input("🔑 Contraseña:", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.markdown("<h1 style='text-align: center;'>🏭 Acceso Restringido - ACOR 2026</h1>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.text_input("🔑 Contraseña:", type="password", on_change=password_entered, key="password")
-            st.error("❌ Contraseña incorrecta. Acceso denegado.")
-        return False
-    else:
-        return True
-
-if not check_password():
-    st.stop() 
-
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
     'IN_Marc_Fibra_pct': in_marc, 'OP_DifPren_Ratio_Extraccion': op_ratio_ext, 'OP_DifPren_MS_PulpaPrensada_pct': op_ms_pulpa,
-    'OP_DifPren_Temp_Jugoverde_C': op_temp_crudo, 'OP_DifPren_Ratio_AguaAporte_pct': op_ratio_aporte,
+    'OP_DifPren_Temp_Jugoverde_C': op_temp_verde, 'OP_DifPren_Ratio_AguaAporte_pct': op_ratio_aporte,
     'OP_DifPren_Mezcla_AguaCaliente_pct': op_mezcla_caliente, 'OP_DifPren_Ratio_AguaPrensas_pct': op_ratio_prensas,
     'OP_DifPren_Ratio_Recirculacion_pct': op_ratio_recirc, 'OP_DifPren_Ratio_Desespumador_pct': op_ratio_desesp,
     'OP_DifPren_Int17_TempIn_C': op_int17_tin, 'OP_DifPren_Int17_TempOut_C': op_int17_tout,
@@ -803,7 +769,7 @@ with kpi6:
 st.markdown("---")
 
 # ====================================================================
-# PESTAÑAS DE NAVEGACIÓN POR MÓDULOS (M7 ADELANTADO ANTES DE M6)
+# PESTAÑAS DE NAVEGACIÓN POR MÓDULOS 
 # ====================================================================
 tabs = st.tabs([
     "M1: Difusión",
