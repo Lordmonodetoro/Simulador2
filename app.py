@@ -8,7 +8,7 @@ import io
 # CONFIGURACIÓN DE PÁGINA STREAMLIT
 # ====================================================================
 st.set_page_config(
-    page_title="Gemelo Digital ACOR 2026 | Termodinámica Pura",
+    page_title="Gemelo Digital ACOR 2026 | Termodinámica",
     page_icon="🏭",
     layout="wide"
 )
@@ -74,7 +74,7 @@ class PlantaAzucareraCompleta:
         out = {}
 
         molienda = float(c['IN_Molienda_th'])
-        flujo_jugo = molienda * float(c['OP_DifPren_Ratio_Extraccion'])
+        flujo_jugo = molienda * float(c['Draft'])
 
         fibra_seca_th = molienda * (float(c['IN_Marc_Fibra_pct']) / 100.0)
         pulpa_prensada_th = fibra_seca_th / (float(c['OP_DifPren_MS_PulpaPrensada_pct']) / 100.0)
@@ -693,7 +693,7 @@ with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=
 
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
-    'IN_Marc_Fibra_pct': in_marc, 'OP_DifPren_Ratio_Extraccion': op_ratio_ext, 'OP_DifPren_MS_PulpaPrensada_pct': op_ms_pulpa,
+    'IN_Marc_Fibra_pct': in_marc, 'Draft': op_ratio_ext, 'OP_DifPren_MS_PulpaPrensada_pct': op_ms_pulpa,
     'OP_DifPren_Temp_Jugoverde_C': op_temp_verde, 'OP_DifPren_Ratio_AguaAporte_pct': op_ratio_aporte,
     'OP_DifPren_Mezcla_AguaCaliente_pct': op_mezcla_caliente, 'OP_DifPren_Ratio_AguaPrensas_pct': op_ratio_prensas,
     'OP_DifPren_Ratio_Recirculacion_pct': op_ratio_recirc, 'OP_DifPren_Ratio_Desespumador_pct': op_ratio_desesp,
