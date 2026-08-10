@@ -95,12 +95,12 @@ class PlantaAzucareraCompleta:
         out.update({
             'Remolacha Procesada (t/h)': molienda,
             'Caudal Jugo Verde (t/h)': flujo_jugo,
-            'OUT_Caudal_Jugoverde_Brix_pct': 17.16,
-            'OUT_Caudal_Jugoverde_Pureza_pct': float(c['IN_Pureza_Agricola_pct']),
-            'OUT_DifPren_PulpaPrensada_Secado_th': pulpa_prensada_th,
-            'OUT_Recalentador17_Vapor_th': vap_17,
-            'OUT_Recalentador18_19_Vapor_th': vap_18_19,
-            'OUT_Recalentador20_Vapor_th': vap_20
+            'Brix Jugo Verde (t/h)': 17.16,
+            'Pureza Jugo Verde (t/h)': float(c['IN_Pureza_Agricola_pct']),
+            'Caudal de pulpa prensada (t/h)': pulpa_prensada_th,
+            'Consumo vapor R17 (Agua Prensas)': vap_17,
+            'Consumo vapor R18+R19 (Recir. Torre/Macerador)': vap_18_19,
+            'Consumo vapor R20 (Desespumado)': vap_20
         })
         return out
 
@@ -109,8 +109,8 @@ class PlantaAzucareraCompleta:
         out = {}
 
         flujo_jugo = float(m1['Caudal Jugo Verde (t/h)'])
-        ds_jugo = float(m1['OUT_Caudal_Jugoverde_Brix_pct'])
-        pur_jugo = float(m1['OUT_Caudal_Jugoverde_Pureza_pct'])
+        ds_jugo = float(m1['Brix Jugo Verde (t/h)'])
+        pur_jugo = float(m1['Pureza Jugo Verde (t/h)'])
         t_in = float(c['OP_DifPren_Temp_Jugoverde_C'])
 
         cp_jugo = 1.0 - (0.005 * ds_jugo)
@@ -437,9 +437,9 @@ class PlantaAzucareraCompleta:
 
         d_v5_h56 = float(m3.get('OUT_Recalentador5_6_Vapor_th', 0.0))
         d_v5_h8 = float(m3.get('OUT_Recalentador8_Vapor_th', 0.0))
-        d_v5_h17 = float(m1.get('OUT_Recalentador17_Vapor_th', 0.0))
-        d_v5_h18 = float(m1.get('OUT_Recalentador18_19_Vapor_th', 0.0))
-        d_v5_h20 = float(m1.get('OUT_Recalentador20_Vapor_th', 0.0))
+        d_v5_h17 = float(m1.get('Consumo vapor R17 (Agua Prensas)', 0.0))
+        d_v5_h18 = float(m1.get('Consumo vapor R18+R19 (Recir. Torre/Macerador)', 0.0))
+        d_v5_h20 = float(m1.get('Consumo vapor R20 (Desespumado)', 0.0))
         d_v5_vaho = 0.29 * (float(c['IN_Molienda_th'])/445.0)
         D[4] = d_v5_h56 + d_v5_h8 + d_v5_h17 + d_v5_h18 + d_v5_h20 + d_v5_vaho + SANGRIA_FIJA
 
@@ -531,7 +531,7 @@ class PlantaAzucareraCompleta:
             {'nombre': 'Recalentador Nº 4 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador4_Vapor_th', 16.08))},
             {'nombre': 'Recalentadores Nº 5+6 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador5_6_Vapor_th', 5.32))},
             {'nombre': 'Recalentador Nº 8 (M3)', 'flujo_th': float(m3.get('OUT_Recalentador8_Vapor_th', 0.29))},
-            {'nombre': 'Agua Prensa Difusión Nº 17 (M1)', 'flujo_th': float(m1.get('OUT_Recalentador17_Vapor_th', 3.04))},
+            {'nombre': 'Agua Prensa Difusión Nº 17 (M1)', 'flujo_th': float(m1.get('Consumo vapor R17 (Agua Prensas)', 3.04))},
         ]
         total_9635 = sum(item['flujo_th'] for item in fuentes_9635)
         flash_9635 = total_9635 * 0.045
@@ -545,8 +545,8 @@ class PlantaAzucareraCompleta:
             {'nombre': 'Tachas A y C', 'flujo_th': float(m6.get('OUT_Vapor4_Demanda_CristalizacionA_th', 33.14))},
             {'nombre': 'ReRecalentador Nº 15', 'flujo_th': reRecalentador_15_vapor_th},
             {'nombre': 'Secadero Azúcar', 'flujo_th': float(m6.get('OUT_SecaderoAzucar_Vapor_th', 1.78))},
-            {'nombre': 'Int. 18+19 (M1)', 'flujo_th': float(m1.get('OUT_Recalentador18_19_Vapor_th', 2.35))},
-            {'nombre': 'Int. 20 (M1)', 'flujo_th': float(m1.get('OUT_Recalentador20_Vapor_th', 1.83))}
+            {'nombre': 'Int. 18+19 (M1)', 'flujo_th': float(m1.get('Consumo vapor R18+R19 (Recir. Torre/Macerador)', 2.35))},
+            {'nombre': 'Int. 20 (M1)', 'flujo_th': float(m1.get('Consumo vapor R20 (Desespumado)', 1.83))}
         ]
         total_9620 = sum(item['flujo_th'] for item in fuentes_9620)
         flash_9620 = total_9620 * 0.09
@@ -568,7 +568,7 @@ class PlantaAzucareraCompleta:
     def mod_9_energia(self, m1, m4, m5, m6):
         c = self.config
         out = {}
-        pulpa = float(m1.get('OUT_DifPren_PulpaPrensada_Secado_th', 0.0))
+        pulpa = float(m1.get('Caudal de pulpa prensada (t/h)', 0.0))
         ms_pulpa_th = pulpa * (float(c['OP_DifPren_MS_PulpaPrensada_pct']) / 100.0)
         pellet = ms_pulpa_th / ((100.0 - float(c['OP_Pulpa_HumedadPellet_pct'])) / 100.0) if c['OP_Pulpa_HumedadPellet_pct'] < 100.0 else 0.0
         agua_evap_sec = max(0.0, pulpa - pellet)
