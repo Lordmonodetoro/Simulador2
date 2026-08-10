@@ -331,7 +331,7 @@ class PlantaAzucareraCompleta:
             'Caudal de Polvo y Granzas Secadero (t/h)': float(f_polvo),
             'OUT_Caudal_AzucarComercial_Brix_pct': 100.0,
             'OUT_Caudal_AzucarComercial_Pureza_pct': 99.9,
-            'OUT_Caudal_AzucarB_Fundicion_Flujo_th': float(f_az_b),
+            'Caudal Azúcar B a Ref. (t/h)': float(f_az_b),
             'OUT_Caudal_AzucarB_Fundicion_Pureza_pct': 98.7,
             'Caudal Masa B (t/h)': float(masa_b),
             'Brix Masa B (ºBx)': float(c['OP_Cuarto de Azúcar_BrixMasaB_pct']),
@@ -346,7 +346,7 @@ class PlantaAzucareraCompleta:
             'Caudal de Miel Rica A (t/h)': float(f_Miel_Rica_a * 0.25),
             'Caudal de Miel Pobre B (t/h)': float(f_miel_b),
             'Caudal de Agua Centrifugas A (t/h)': float(agua_lav_a),
-            'OUT_M6_RendimientoCristal_pct': float(92.4)
+            'Rto (t/h)': float(92.4)
         })
         return out
 
@@ -361,7 +361,7 @@ class PlantaAzucareraCompleta:
         brix_jugo_Anteevaporación_pct = float(m3.get('Brix Jugo Anteevaporación (ºBx)', 18.40))
         pur_jugo_Anteevaporación_pct = float(m3.get('Pureza Jugo Anteevaporación (ºPz)', 91.60))
 
-        flujo_azucar_b_th = float(m6.get('OUT_Caudal_AzucarB_Fundicion_Flujo_th', 32.48))
+        flujo_azucar_b_th = float(m6.get('Caudal Azúcar B a Ref. (t/h)', 32.48))
         pur_azucar_b = float(m6.get('OUT_Caudal_AzucarB_Fundicion_Pureza_pct', 98.7))
 
         flujo_polvo = float(m6.get('Caudal de Polvo y Granzas Secadero (t/h)', 4.61))
@@ -500,9 +500,9 @@ class PlantaAzucareraCompleta:
             'Consumidores vapor 5ª (t/h)': float(D[4]),
             'Consumidores vapor 6ª (t/h)': float(D[5]),
             'Caudal condensados Calderas (t/h)': float(V_vivo_0),
-            'OUT_Condensado_CascadaFinal_9635_th': float(sum(V_evap_calc)),
-            'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0),
-            'OUT_M5_CaudalJugoAnteevaporaciónEntrante_th': float(flujo_entrada),
+            'Caudal condensados Evaporación (t/h)': float(sum(V_evap_calc)),
+            'Caudal Vapor a Evaporación. (t/h)': float(V_vivo_0),
+            'Caudal JAE a Evaporación. (t/h)': float(flujo_entrada),
             'ratios1': float(V_vivo_0),
             '2': float(V_evap_calc[0] - Sangrias_netas[0]),
             '3': float(V_evap_calc[1] - Sangrias_netas[1]),
@@ -518,7 +518,7 @@ class PlantaAzucareraCompleta:
     def mod_8_condensados_agua(self, m5, m6, m4, m3, m1, m2, m7):
         out = {}
         reRecalentador_15_vapor_th = float(m7.get('Consumo vapor R15 (Rec. Refundidora)', 0.48))
-        cond_cascada_evaporacion = float(m5.get('OUT_Condensado_CascadaFinal_9635_th', 246.50))
+        cond_cascada_evaporacion = float(m5.get('Caudal condensados Evaporación (t/h)', 246.50))
 
         fuentes_9635 = [
             {'nombre': 'Condensado Evaporación Cascado', 'flujo_th': cond_cascada_evaporacion},
@@ -576,10 +576,10 @@ class PlantaAzucareraCompleta:
         rend_termico = float(c['OP_SecaderoPulpa_RendimientoTérmico_pct']) / 100.0
         gas_m3h = (agua_evap_sec * 1000.0 * 1.05) / (float(c['OP_SecaderoPulpa_PCI_Gas_kWh_m3']) * rend_termico) if rend_termico > 0.0 else 0.0
 
-        vapor_calderas = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0)) + float(m4.get('Consumo vapor R14 (JAE)', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
+        vapor_calderas = float(m5.get('Caudal Vapor a Evaporación. (t/h)', 0.0)) + float(m4.get('Consumo vapor R14 (JAE)', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
         mw_elec = (vapor_calderas * float(c['OP_Turbina_ConsumoEspecifico_kWh_tVapor'])) / 1000.0
 
-        vapor_evap_th = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0))
+        vapor_evap_th = float(m5.get('Caudal Vapor a Evaporación. (t/h)', 0.0))
         molienda = float(c['IN_Molienda_th'])
 
         out.update({
