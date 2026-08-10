@@ -225,7 +225,7 @@ class PlantaAzucareraCompleta:
         out = {}
         molienda = float(m1.get('OUT_RemolachaProcesada_th', float(c['IN_Molienda_th'])))
         f_escala = molienda / 445.0
-        brix_a = float(c['OP_Cocimiento_BrixMasaA_pct'])
+        brix_a = float(c['OP_Cuarto de Azúcar_BrixMasaA_pct'])
 
         flujo_liq = float(m7.get('OUT_Caudal_LicorEstandar_Flujo_th', 172.19 * f_escala))
         brix_liq = float(m7.get('OUT_Caudal_LicorEstandar_Brix_pct', 73.90))
@@ -304,10 +304,10 @@ class PlantaAzucareraCompleta:
             'OUT_Caudal_AzucarB_Fundicion_Flujo_th': float(f_az_b),
             'OUT_Caudal_AzucarB_Fundicion_Pureza_pct': 98.7,
             'OUT_Caudal_MasaCocidaB_Flujo_th': float(masa_b),
-            'OUT_Caudal_MasaCocidaB_Brix_pct': float(c['OP_Cocimiento_BrixMasaB_pct']),
+            'OUT_Caudal_MasaCocidaB_Brix_pct': float(c['OP_Cuarto de Azúcar_BrixMasaB_pct']),
             'OUT_Caudal_MasaCocidaB_Pureza_pct': 86.1,
             'OUT_Caudal_MasaCocidaC_Flujo_th': float(masa_c),
-            'OUT_Caudal_MasaCocidaC_Brix_pct': float(c['OP_Cocimiento_BrixMasaC_pct']),
+            'OUT_Caudal_MasaCocidaC_Brix_pct': float(c['OP_Cuarto de Azúcar_BrixMasaC_pct']),
             'OUT_Caudal_MasaCocidaC_Pureza_pct': 73.0,
             'OUT_Caudal_MelazaFinal_Flujo_th': float(f_melaza_final),
             'OUT_Caudal_MelazaFinal_Brix_pct': 79.70,
@@ -652,10 +652,10 @@ with st.sidebar.expander("♨️ Módulo 4 (Thin Juice Heating)", expanded=False
 with st.sidebar.expander("💨 Módulo 5 (Evaporación)", expanded=False):
     op_evap_brix_obj = st.slider("Evaporacion_BrixSalida_objetivo_pct (%)", 60.0, 75.0, 69.4, 0.1)
 
-with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=False):
-    op_brix_masa_a = st.slider("Cocimiento_BrixMasaA_pct (%)", 85.0, 95.0, 91.0, 0.1)
-    op_brix_masa_b = st.slider("Cocimiento_BrixMasaB_pct (%)", 90.0, 98.0, 94.6, 0.1)
-    op_brix_masa_c = st.slider("Cocimiento_BrixMasaC_pct (%)", 90.0, 98.0, 95.3, 0.1)
+with st.sidebar.expander("🍬 Módulo 6 (Cuarto de Azúcar) & 9 (Energía)", expanded=False):
+    op_brix_masa_a = st.slider("Cuarto de Azúcar_BrixMasaA_pct (%)", 85.0, 95.0, 91.0, 0.1)
+    op_brix_masa_b = st.slider("Cuarto de Azúcar_BrixMasaB_pct (%)", 90.0, 98.0, 94.6, 0.1)
+    op_brix_masa_c = st.slider("Cuarto de Azúcar_BrixMasaC_pct (%)", 90.0, 98.0, 95.3, 0.1)
     op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
     op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
@@ -681,7 +681,7 @@ config_usuario = {
     'OP_Calent_No9_TempSalida_C': op_c9_tout, 'OP_JugoAnteevaporación_DestinoMelting_pct': op_melting_pct,
     'OP_Recalentador10_TempSalida_C': op_c10_tout, 'OP_Recalentador11_12_TempSalida_C': op_c11_tout, 'OP_Recalentador13_TempSalida_C': op_c13_tout, 'OP_Recalentador14_TempSalida_C': op_c14_tout,
     'OP_Evaporacion_BrixSalida_objetivo_pct': op_evap_brix_obj,
-    'OP_Cocimiento_BrixMasaA_pct': op_brix_masa_a, 'OP_Cocimiento_BrixMasaB_pct': op_brix_masa_b, 'OP_Cocimiento_BrixMasaC_pct': op_brix_masa_c,
+    'OP_Cuarto de Azúcar_BrixMasaA_pct': op_brix_masa_a, 'OP_Cuarto de Azúcar_BrixMasaB_pct': op_brix_masa_b, 'OP_Cuarto de Azúcar_BrixMasaC_pct': op_brix_masa_c,
     'OP_Pulpa_HumedadPellet_pct': op_pellet_hum, 'OP_SecaderoPulpa_PCI_Gas_kWh_m3': op_gas_pci, 'OP_SecaderoPulpa_RendimientoTérmico_pct': op_sec_rend,
     'OP_Turbina_ConsumoEspecifico_kWh_tVapor': op_turb_cons
 }
@@ -748,7 +748,7 @@ tabs = st.tabs([
     "M4: Jugo Anteevaporación",
     "M5: Evaporación",
     "M7: Refundición",
-    "M6: Cocimiento",
+    "M6: Cuarto de Azúcar",
     "M8: Condensados",
     "M9: Energía",
     "📄 REPORTE MAESTRO"
@@ -771,7 +771,7 @@ with tabs[2]: render_modulo_tab('M3', 'Módulo 3: Depuración y Carbonataciones'
 with tabs[3]: render_modulo_tab('M4', 'Módulo 4: Thin Juice Heating')
 with tabs[4]: render_modulo_tab('M5', 'Módulo 5: Estación de Evaporación')
 with tabs[5]: render_modulo_tab('M7', 'Módulo 7: Refundición / Melter House')  
-with tabs[6]: render_modulo_tab('M6', 'Módulo 6: Cocimiento y Cristalización')  
+with tabs[6]: render_modulo_tab('M6', 'Módulo 6: Cuarto de Azúcar y Cristalización')  
 with tabs[7]: render_modulo_tab('M8', 'Módulo 8: Condensados y Agua')
 with tabs[8]: render_modulo_tab('M9', 'Módulo 9: Secadero y Energía')
 
@@ -817,7 +817,7 @@ with tabs[9]:
         'M4': 'Módulo 4: Thin Juice Heating',
         'M5': 'Módulo 5: Estación de Evaporación (Caudales por efecto y Vapores)',
         'M7': 'Módulo 7: Refundición / Melter House (Desglose de entradas)',  
-        'M6': 'Módulo 6: Cocimiento y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  
+        'M6': 'Módulo 6: Cuarto de Azúcar y Cristalización (Mieles, Masas, Aguas, Rendimiento)',  
         'M8': 'Módulo 8: Circuito de Condensados y Agua',
         'M9': 'Módulo 9: Secadero de Pulpa y Energía'
     }
