@@ -232,23 +232,23 @@ class PlantaAzucareraCompleta:
         temp_entrada = float(m3.get('Temperatura Jugo Anteevaporación (ºC) ', 87.3))
 
         t_10 = float(c['OP_Recalentador10_TempSalida_C'])
-        out['OUT_Recalentador10_Vapor_th'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_10 - temp_entrada)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
+        out['Consumo vapor R10 (JAE)'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_10 - temp_entrada)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
 
         t_11_12 = float(c['OP_Recalentador11_12_TempSalida_C'])
         v11_12 = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_11_12 - t_10)) / self.cat_vap['Vapor_2doEfecto']['entalpia']
-        out['OUT_Recalentador11_Vapor_th'] = v11_12 * 0.4
-        out['OUT_Recalentador12_Vapor_th'] = v11_12 * 0.6
+        out['Consumo vapor R11 (JAE)'] = v11_12 * 0.4
+        out['Consumo vapor R12 (JAE)'] = v11_12 * 0.6
 
         t_13 = float(c['OP_Recalentador13_TempSalida_C'])
-        out['OUT_Recalentador13_Vapor_th'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_13 - t_11_12)) / self.cat_vap['Vapor_1erEfecto']['entalpia']
+        out['Consumo vapor R13 (JAE)'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_13 - t_11_12)) / self.cat_vap['Vapor_1erEfecto']['entalpia']
 
         t_14 = float(c['OP_Recalentador14_TempSalida_C'])
-        out['OUT_Recalentador14_Vapor_th'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_14 - t_13)) / self.cat_vap['Vapor_Escape']['entalpia']
+        out['Consumo vapor R14 (JAE)'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_14 - t_13)) / self.cat_vap['Vapor_Escape']['entalpia']
 
-        out['OUT_Caudal_JugoAnteevaporaciónCalentado_Flujo_th'] = flujo_jugo_Anteevaporación
+        out['Caudal Jugo Anteevaporación (t/h) Calentado'] = flujo_jugo_Anteevaporación
         out['Brix Jugo Anteevaporación (t/h)'] = brix_Anteevaporación
         out['Pureza Jugo Anteevaporación (%)'] = pur_Anteevaporación
-        out['OUT_JugoAnteevaporaciónCalentado_Temp_C'] = t_14
+        out['Temperatura Jugo Anteevaporación (ºC)  Calentado'] = t_14
 
         return out
 
@@ -406,24 +406,24 @@ class PlantaAzucareraCompleta:
     def mod_5_evaporacion(self, m4, m3, m6, m7, m1, m2):
         c = self.config
         out = {}
-        flujo_entrada = float(m4.get('OUT_Caudal_JugoAnteevaporaciónCalentado_Flujo_th', 500.0))
-        temp_entrada = float(m4.get('OUT_JugoAnteevaporaciónCalentado_Temp_C', 123.8))
+        flujo_entrada = float(m4.get('Caudal Jugo Anteevaporación (t/h) Calentado', 500.0))
+        temp_entrada = float(m4.get('Temperatura Jugo Anteevaporación (ºC)  Calentado', 123.8))
         brix_entrada = float(m4.get('Brix Jugo Anteevaporación (t/h)', 18.40))
         if brix_entrada <= 0 or brix_entrada > 40: brix_entrada = 18.40
 
         SANGRIA_FIJA = 0.30
         D = [0.0] * 6
-        d_v1_h13 = float(m4.get('OUT_Recalentador13_Vapor_th', 0.0))
+        d_v1_h13 = float(m4.get('Consumo vapor R13 (JAE)', 0.0))
         d_v1_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_1erEfecto' else 0.0
         D[0] = d_v1_h13 + d_v1_m7 + SANGRIA_FIJA
 
-        d_v2_h11 = float(m4.get('OUT_Recalentador11_Vapor_th', 0.0))
-        d_v2_h12 = float(m4.get('OUT_Recalentador12_Vapor_th', 0.0))
+        d_v2_h11 = float(m4.get('Consumo vapor R11 (JAE)', 0.0))
+        d_v2_h12 = float(m4.get('Consumo vapor R12 (JAE)', 0.0))
         d_v2_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_2doEfecto' else 0.0
         d_v2_sec = float(m6.get('OUT_SecaderoAzucar_Vapor_th', 0.0))
         D[1] = d_v2_h11 + d_v2_h12 + d_v2_m7 + d_v2_sec + 3.00 + SANGRIA_FIJA
 
-        d_v3_h10 = float(m4.get('OUT_Recalentador10_Vapor_th', 0.0))
+        d_v3_h10 = float(m4.get('Consumo vapor R10 (JAE)', 0.0))
         d_v3_h9 = float(m3.get('Consumo vapor R9 (J.Claro) (t/h)', 0.0))
         d_v3_tb = float(m6.get('OUT_Vapor3_Demanda_CristalizacionB_th', 0.0))
         d_v3_m7 = float(m7.get('OUT_Recalentador15_VaporConsumo_th', 0.0)) if str(c.get('OP_Recalentador15_Vapor_Fuente')) == 'Vapor_3erEfecto' else 0.0
@@ -523,10 +523,10 @@ class PlantaAzucareraCompleta:
         fuentes_9635 = [
             {'nombre': 'Condensado Evaporación Cascado', 'flujo_th': cond_cascada_evaporacion},
             {'nombre': 'ReRecalentador Nº 7 (M3)', 'flujo_th': float(m3.get('Consumo vapor R7 (J.Encalado frío) (t/h)', 0.0))},
-            {'nombre': 'ReRecalentador Nº 10 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador10_Vapor_th', 26.44))},
-            {'nombre': 'ReRecalentador Nº 11 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador11_Vapor_th', 1.25))},
-            {'nombre': 'ReRecalentador Nº 12 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador12_Vapor_th', 1.92))},
-            {'nombre': 'ReRecalentador Nº 13 (M4)', 'flujo_th': float(m4.get('OUT_Recalentador13_Vapor_th', 1.98))},
+            {'nombre': 'ReRecalentador Nº 10 (M4)', 'flujo_th': float(m4.get('Consumo vapor R10 (JAE)', 26.44))},
+            {'nombre': 'ReRecalentador Nº 11 (M4)', 'flujo_th': float(m4.get('Consumo vapor R11 (JAE)', 1.25))},
+            {'nombre': 'ReRecalentador Nº 12 (M4)', 'flujo_th': float(m4.get('Consumo vapor R12 (JAE)', 1.92))},
+            {'nombre': 'ReRecalentador Nº 13 (M4)', 'flujo_th': float(m4.get('Consumo vapor R13 (JAE)', 1.98))},
             {'nombre': 'Recalentador Nº 9 (M3)', 'flujo_th': float(m3.get('Consumo vapor R9 (J.Claro) (t/h)', 6.32))},
             {'nombre': 'Recalentador Nº 4 (M3)', 'flujo_th': float(m3.get('Consumo vapor R4 (J.Encalado frío)', 16.08))},
             {'nombre': 'Recalentadores Nº 5+6 (M3)', 'flujo_th': float(m3.get('Consumo vapor R5+R6 (J.Encalado frío) (t/h)', 5.32))},
@@ -576,7 +576,7 @@ class PlantaAzucareraCompleta:
         rend_termico = float(c['OP_SecaderoPulpa_RendimientoTérmico_pct']) / 100.0
         gas_m3h = (agua_evap_sec * 1000.0 * 1.05) / (float(c['OP_SecaderoPulpa_PCI_Gas_kWh_m3']) * rend_termico) if rend_termico > 0.0 else 0.0
 
-        vapor_calderas = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0)) + float(m4.get('OUT_Recalentador14_Vapor_th', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
+        vapor_calderas = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0)) + float(m4.get('Consumo vapor R14 (JAE)', 0.0)) + (0.05 * float(c['IN_Molienda_th']))
         mw_elec = (vapor_calderas * float(c['OP_Turbina_ConsumoEspecifico_kWh_tVapor'])) / 1000.0
 
         vapor_evap_th = float(m5.get('OUT_VaporCalderas_1erEfecto_th', 0.0))
