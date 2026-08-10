@@ -94,7 +94,7 @@ class PlantaAzucareraCompleta:
 
         out.update({
             'Remolacha Procesada (t/h)': molienda,
-            'OUT_Caudal_Jugoverde_Flujo_th': flujo_jugo,
+            'Caudal Jugo Verde (t/h)': flujo_jugo,
             'OUT_Caudal_Jugoverde_Brix_pct': 17.16,
             'OUT_Caudal_Jugoverde_Pureza_pct': float(c['IN_Pureza_Agricola_pct']),
             'OUT_DifPren_PulpaPrensada_Secado_th': pulpa_prensada_th,
@@ -108,7 +108,7 @@ class PlantaAzucareraCompleta:
         c = self.config
         out = {}
 
-        flujo_jugo = float(m1['OUT_Caudal_Jugoverde_Flujo_th'])
+        flujo_jugo = float(m1['Caudal Jugo Verde (t/h)'])
         ds_jugo = float(m1['OUT_Caudal_Jugoverde_Brix_pct'])
         pur_jugo = float(m1['OUT_Caudal_Jugoverde_Pureza_pct'])
         t_in = float(c['OP_DifPren_Temp_Jugoverde_C'])
