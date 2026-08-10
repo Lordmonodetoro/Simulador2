@@ -503,7 +503,7 @@ class PlantaAzucareraCompleta:
             'OUT_Condensado_CascadaFinal_9635_th': float(sum(V_evap_calc)),
             'OUT_VaporCalderas_1erEfecto_th': float(V_vivo_0),
             'OUT_M5_CaudalJugoAnteevaporaciónEntrante_th': float(flujo_entrada),
-            'Caudal de vapor 1ª (t/h)': float(V_vivo_0),
+            'ratios1': float(V_vivo_0),
             'Caudal de vapor 2ª (t/h)': float(V_evap_calc[0] - Sangrias_netas[0]),
             'Caudal de vapor 3ª (t/h)': float(V_evap_calc[1] - Sangrias_netas[1]),
             'Caudal de vapor 4ª (t/h)': float(V_evap_calc[2] - Sangrias_netas[2]),
