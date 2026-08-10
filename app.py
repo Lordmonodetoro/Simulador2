@@ -8,7 +8,7 @@ import io
 # CONFIGURACIÓN DE PÁGINA STREAMLIT
 # ====================================================================
 st.set_page_config(
-    page_title="Gemelo Digital ACOR 2026 | Termodinámica ",
+    page_title="Gemelo Digital ACOR 2026 | Termodinámica Pura",
     page_icon="🏭",
     layout="wide"
 )
@@ -138,8 +138,12 @@ class PlantaAzucareraCompleta:
         out['OUT_Recalentador7_Vapor_th'] = (flujo_etapa_2 * cp_jugo * max(0.0, t_out_7 - t_out_56)) / self.cat_vap['Vapor_4toEfecto']['entalpia']
 
         pol_lost_mud = molienda * 0.0004
-        undefined_losses = 0.70 * f_escala
-        impurezas_removidas = ms_jugo_verde * (1.0 - pureza_entrada/100.0) * 0.15
+        
+        # Corrección térmica: Pérdidas no determinadas calibradas con el gap real de ACOR (1.50 t/h)
+        undefined_losses = 1.50 * f_escala 
+        
+        # Corrección de remoción de impurezas para balancear las mieles 
+        impurezas_removidas = ms_jugo_verde * (1.0 - pureza_entrada/100.0) * 0.05
 
         ms_Lodos_1ro = caco3_total + impurezas_removidas + pol_lost_mud
         Lodos_1ro_humedos = ms_Lodos_1ro / (float(c['OP_PKF_MS_Lodos_pct']) / 100.0)
@@ -259,7 +263,13 @@ class PlantaAzucareraCompleta:
 
         est_a = [153.6 * f_escala, 72.5 * f_escala, 64.1 * f_escala, 16.0 * f_escala, 3.2 * f_escala]
         sol_a = fsolve(modelo_pan_centrifuga_A, est_a, args=(MS_liq, Pol_liq, brix_a))
-        f_masa_a, f_az_comercial, f_verde_a, f_Miel_Rica_a, agua_lav_a = sol_a
+        
+        # Desglose crítico: El solver devuelve TODO el cristal generado. En ACOR, se separa el polvo.
+        f_masa_a, f_az_comercial_tot, f_verde_a, f_Miel_Rica_a, agua_lav_a = sol_a
+        
+        # Separación del polvo de azúcar (Sugar dust and lumps)[cite: 1]
+        f_polvo = f_az_comercial_tot * (4.61 / (72.50 + 4.61)) 
+        f_az_comercial = f_az_comercial_tot - f_polvo
 
         F_in_b = f_verde_a * (67.53 / 64.14) if f_verde_a > 0 else 67.53 * f_escala
         F_in_c = F_in_b * (32.11 / 67.53) if F_in_b > 0 else 32.11 * f_escala
@@ -293,6 +303,7 @@ class PlantaAzucareraCompleta:
             'OUT_Caudal_MasaCocidaA_Brix_pct': float(brix_a),
             'OUT_Caudal_MasaCocidaA_Pureza_pct': float(pur_a),
             'OUT_Caudal_AzucarComercial_Flujo_th': float(f_az_comercial),
+            'OUT_M6_AzucarPolvo_th': float(f_polvo),
             'OUT_Caudal_AzucarComercial_Brix_pct': 100.0,
             'OUT_Caudal_AzucarComercial_Pureza_pct': 99.9,
             'OUT_Caudal_AzucarB_Fundicion_Flujo_th': float(f_az_b),
@@ -328,7 +339,7 @@ class PlantaAzucareraCompleta:
         flujo_azucar_b_th = float(m6.get('OUT_Caudal_AzucarB_Fundicion_Flujo_th', 32.48))
         pur_azucar_b = float(m6.get('OUT_Caudal_AzucarB_Fundicion_Pureza_pct', 98.7))
 
-        flujo_polvo = float(m6.get('OUT_Caudal_AzucarComercial_Flujo_th', 72.5)) * 0.0636
+        flujo_polvo = float(m6.get('OUT_M6_AzucarPolvo_th', 4.61))
 
         ms_jarabe = flujo_jarabe_evap_th * (brix_jarabe_evap / 100.0)
         pol_jarabe = ms_jarabe * (pur_jarabe_evap / 100.0)
@@ -653,7 +664,7 @@ with st.sidebar.expander("🍬 Módulo 6 (Cocimiento) & 9 (Energía)", expanded=
     op_pellet_hum = st.slider("Pulpa_HumedadPellet_pct (%)", 5.0, 15.0, 10.0, 0.1)
     op_gas_pci = st.number_input("SecaderoPulpa_PCI_Gas_kWh_m3", value=10.50)
     op_sec_rend = st.slider("SecaderoPulpa_RendimientoTérmico_pct (%)", 70.0, 95.0, 85.0, 1.0)
-    op_turb_cons = 950.0
+    op_turb_cons = 95.0
 
 config_usuario = {
     'IN_Molienda_th': in_molienda, 'IN_Riqueza_Remolacha_pct': in_riqueza, 'IN_Pureza_Agricola_pct': in_pureza,
