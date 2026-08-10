@@ -209,15 +209,15 @@ class PlantaAzucareraCompleta:
         out.update({
             'Caudal Jugo Anteevaporación (t/h)': flujo_jugo_Anteevaporación_total,
             'Brix Jugo Anteevaporación (ºBx)': brix_Anteevaporación,
-            'OUT_Caudal_JugoAnteevaporaciónTotal_Pureza_pct': pureza_Anteevaporación,
-            'OUT_JugoAnteevaporación_ParaModulo4_Calentamiento_th': flujo_jugo_Anteevaporación_mod4,
-            'OUT_JugoAnteevaporación_Temp_C': t_out_2da_carb,
-            'OUT_M3_LechadaCal_th': float(agua_lechada_interna + t_CaO_total),
-            'OUT_M3_CO2_Consumido_th': float(co2_total),
+            'Pureza Jugo Anteevaporación (ºPz)': pureza_Anteevaporación,
+            'Caudal Jugo Anteevaporación (t/h) a Evaporación ': flujo_jugo_Anteevaporación_mod4,
+            'Temperatura Jugo Anteevaporación (ºC) ': t_out_2da_carb,
+            'Caudal de lechada Total (t/h)': float(agua_lechada_interna + t_CaO_total),
+            'Caudal de CO2 consumido (t/h)': float(co2_total),
             'OUT_M3_Recalentador1raCarb_th': float(Lodos_1ro_humedos),
             'OUT_M3_Recalentador2daCarb_th': float(evap_agua_2da + 1.2 * f_escala),
             'OUT_M3_RecalentadorPKF_th': float(Lodos_1ro_humedos * 0.85),
-            'OUT_M3_SweetWater_th': float(agua_lechada_interna)
+            'Caudal de Agua Filtrada PKF (t/h)': float(agua_lechada_interna)
         })
         return out
 
@@ -226,10 +226,10 @@ class PlantaAzucareraCompleta:
         out = {}
         cp_jugo = 0.96
 
-        flujo_jugo_Anteevaporación = float(m3.get('OUT_JugoAnteevaporación_ParaModulo4_Calentamiento_th', 516.0))
+        flujo_jugo_Anteevaporación = float(m3.get('Caudal Jugo Anteevaporación (t/h) a Evaporación ', 516.0))
         brix_Anteevaporación = float(m3.get('Brix Jugo Anteevaporación (ºBx)', 18.40))
-        pur_Anteevaporación = float(m3.get('OUT_Caudal_JugoAnteevaporaciónTotal_Pureza_pct', 91.60))
-        temp_entrada = float(m3.get('OUT_JugoAnteevaporación_Temp_C', 87.3))
+        pur_Anteevaporación = float(m3.get('Pureza Jugo Anteevaporación (ºPz)', 91.60))
+        temp_entrada = float(m3.get('Temperatura Jugo Anteevaporación (ºC) ', 87.3))
 
         t_10 = float(c['OP_Recalentador10_TempSalida_C'])
         out['OUT_Recalentador10_Vapor_th'] = (flujo_jugo_Anteevaporación * cp_jugo * max(0.0, t_10 - temp_entrada)) / self.cat_vap['Vapor_3erEfecto']['entalpia']
@@ -359,7 +359,7 @@ class PlantaAzucareraCompleta:
 
         flujo_jugo_Anteevaporación_th = float(m3.get('Caudal Jugo Anteevaporación (t/h)', 0.0)) * (float(c['OP_JugoAnteevaporación_DestinoMelting_pct'])/100.0)
         brix_jugo_Anteevaporación_pct = float(m3.get('Brix Jugo Anteevaporación (ºBx)', 18.40))
-        pur_jugo_Anteevaporación_pct = float(m3.get('OUT_Caudal_JugoAnteevaporaciónTotal_Pureza_pct', 91.60))
+        pur_jugo_Anteevaporación_pct = float(m3.get('Pureza Jugo Anteevaporación (ºPz)', 91.60))
 
         flujo_azucar_b_th = float(m6.get('OUT_Caudal_AzucarB_Fundicion_Flujo_th', 32.48))
         pur_azucar_b = float(m6.get('OUT_Caudal_AzucarB_Fundicion_Pureza_pct', 98.7))
